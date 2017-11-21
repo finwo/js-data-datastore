@@ -1,30 +1,27 @@
 # js-data-datastore
 
-var jsData          = require('js-data');
-var jsDataDataStore = require('js-data-datastore');
+    var jsData          = require('js-data');
+    var jsDataDataStore = require('js-data-datastore');
 
-jsData.utils.Promise = require('bluebird');
+    jsData.utils.Promise = require('bluebird');
 
-// Create an instance of DataStoreAdapter
-var config = {
-    projectId: 'projectId',
-    namespace: 'namespace',
-    keyFilename: path_to_keyFilename
-};
-var adapter = new jsDataDataStore.DataStoreAdapter({config: config});
+    // Create an instance of DataStoreAdapter
+    var config = {
+        projectId: 'projectId',
+        namespace: 'namespace',
+        keyFilename: path_to_keyFilename
+    };
+    var adapter = new jsDataDataStore.DataStoreAdapter({config: config});
 
-var container = new jsData.Container({
-    mapperDefaults: {
-    }
-});
+    var container = new jsData.Container({ mapperDefaults: { } });
 
-container.registerAdapter('datastore', adapter, { 'default': true });
+    container.registerAdapter('datastore', adapter, { 'default': true });
 
-container.defineMapper('payments');
+    container.defineMapper('payments');
 
-container.defineMapper('users');
+    container.defineMapper('users');
 
-container.defineMapper('testing');
+    container.defineMapper('testing');
 
     /*
      *  http://localhost:3000/api/datastore/count
