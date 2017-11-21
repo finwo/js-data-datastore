@@ -1,5 +1,59 @@
+
+<img src="https://raw.githubusercontent.com/js-data/js-data/master/js-data.png" alt="js-data logo" title="js-data" align="right" width="96" height="96" />
+
 # js-data-datastore
 
+A DataStore adapter for the [JSData Node.js ORM].
+
+### Installation
+
+    npm install --save js-data js-data-datastore 
+
+### Usage
+
+```js
+var jsDataDataStore = require('js-data-datastore');
+
+/*
+ *  Create an instance of DataStoreAdapter
+ */
+var adapter = new jsDataDataStore.DataStoreAdapter({config: {
+    projectId: 'projectId',
+    namespace: 'namespace',
+    keyFilename: 'path_to_keyFilename'
+}});
+
+/*
+ *  Register the adapter instance
+ */
+store.registerAdapter('datastore', adapter, { default: true });
+```
+
+### JSData + DataStore Tutorial
+
+Start with the [JSData + DataStore tutorial]or checkout the [API Reference Documentation].
+
+### Need help?
+
+Please [post a question] on Stack Overflow. **This is the preferred method.**
+
+You can also chat with folks on the [Slack Channel]. If you end up getting
+your question answered, please still consider consider posting your question to
+Stack Overflow (then possibly answering it yourself). Thanks!
+
+### Want to contribute?
+
+Awesome! You can get started over at the [Contributing guide].
+
+Thank you!
+
+### License
+
+[The MIT License (MIT)]
+
+### Example
+
+```js
     var jsData          = require('js-data');
     var jsDataDataStore = require('js-data-datastore');
 
@@ -75,3 +129,4 @@
                 res.send('ERROR<br>' + JSON.stringify(error));
             });
     });
+```
