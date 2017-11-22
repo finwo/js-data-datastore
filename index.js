@@ -671,14 +671,6 @@ jsDataAdapter.Adapter.extend({
     }
 });
 
-var version = {
-    beta: 1,
-    full: '1.0.0-beta.1',
-    major: 1,
-    minor: 0,
-    patch: 0
-};
-
 exports.OPERATORS = OPERATORS;
 exports.DataStoreAdapter = DataStoreAdapter;
-exports.version = version;
+exports.version = require('./package.json')['version'];

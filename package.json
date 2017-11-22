@@ -1,7 +1,7 @@
 {
   "name": "js-data-datastore",
-  "version": "1.0.0-beta.1",
-  "description": "",
+  "version": "1.0.0",
+  "description": "Datastore adapter for js-data",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -16,5 +16,10 @@
     "@google-cloud/datastore": "^1.1.0",
     "js-data": "^3.0.1",
     "js-data-adapter": "^0.8.5"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/ratus/js-data-datastore/issues"
+  },
+  "homepage": "https://github.com/ratus/js-data-datastore#readme",
+  "devDependencies": {}
 }
