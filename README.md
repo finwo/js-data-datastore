@@ -4,6 +4,8 @@
 # js-data-datastore
 
 A DataStore adapter for the JSData Node.js ORM.
+Updated version of js-data-cloud-datastore.
+Credits to JDobry.
 
 ### Installation
 

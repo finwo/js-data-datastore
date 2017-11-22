@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ratus/js-data-datastore.git"
+    "url": "git+https://github.com/trackthis/js-data-datastore.git"
   },
   "author": "",
   "license": "MIT",
@@ -18,8 +18,8 @@
     "js-data-adapter": "^0.8.5"
   },
   "bugs": {
-    "url": "https://github.com/ratus/js-data-datastore/issues"
+    "url": "https://github.com/trackthis/js-data-datastore/issues"
   },
-  "homepage": "https://github.com/ratus/js-data-datastore#readme",
+  "homepage": "https://github.com/trackthis/js-data-datastore#readme",
   "devDependencies": {}
 }
