@@ -245,7 +245,7 @@ jsDataAdapter.Adapter.extend({
                 try {
                     var apiResponse = void 0;
                     var idAttribute = mapper.idAttribute;
-                    var incompleteKey = _this3.datastore.key([mapper.name]);
+                    var incompleteKey = _this3.datastore.key([_this3.getKind(mapper)]);
 
                     // Allocate ids
                     _this3.datastore.allocateIds(incompleteKey, records.length, function (err, keys) {
@@ -324,7 +324,7 @@ jsDataAdapter.Adapter.extend({
         var _this4 = this;
 
         return new jsData.utils.Promise(function (resolve, reject) {
-            _this4.datastore.delete(_this4.datastore.key([mapper.name, id]), function (err, apiResponse) {
+            _this4.datastore.delete(_this4.datastore.key([_this4.getKind(mapper), id]), function (err, apiResponse) {
                 return err ? reject(err) : resolve([undefined, apiResponse]);
             });
         });
