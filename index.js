@@ -384,9 +384,18 @@ jsDataAdapter.Adapter.extend({
         var _this6 = this;
 
         return new jsData.utils.Promise(function (resolve, reject) {
+            // googledatastore create his key based on key value we send.
+            // String -> 'name', Int -> 'id
+            id = (parseInt(id, 10) == id) ? parseInt(id, 10) : id;
             var key = _this6.datastore.key([_this6.getKind(mapper, opts), id]);
             _this6.datastore.get(key, function (err, entity) {
-                return err ? reject(err) : resolve([entity ? entity.data : undefined, {}]);
+                if (!err && !entity) {
+                  err = {
+                    code: 404,
+                    message: 'Not found'
+                  };
+                }
+                return err ? reject(err) : resolve([entity ? entity : undefined, {}]);
             });
         });
     },
