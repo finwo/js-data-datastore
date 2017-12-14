@@ -320,16 +320,19 @@ jsDataAdapter.Adapter.extend({
      * response object.
      * @return {Promise}
      */
-    _destroy: function _destroy(mapper, id) {
+    _destroy: function _destroy(mapper, id, opts) {
         var _this4 = this;
 
         return new jsData.utils.Promise(function (resolve, reject) {
-            _this4.datastore.delete(_this4.datastore.key([_this4.getKind(mapper), id]), function (err, apiResponse) {
+            // googledatastore create his key based on key value we send.
+            // String -> 'name', Int -> 'id
+            id = (parseInt(id, 10) == id) ? parseInt(id, 10) : id;
+            var key = _this4.datastore.key([_this4.getKind(mapper, opts), id]);
+            _this4.datastore.delete(key, function (err, apiResponse) {
                 return err ? reject(err) : resolve([undefined, apiResponse]);
             });
         });
     },
-
 
     /**
      * Destroy the records that match the selection query. Internal method used by
@@ -346,28 +349,30 @@ jsDataAdapter.Adapter.extend({
         var _this5 = this;
 
         return new jsData.utils.Promise(function (resolve, reject) {
-            var dsQuery = _this5.datastore.createQuery(_this5.getKind(mapper, opts));
-            dsQuery = _this5.filterQuery(dsQuery, query, opts);
-            dsQuery = dsQuery.select('__key__');
-            _this5.datastore.runQuery(dsQuery, function (err, entities) {
-                if (err) {
-                    console.error(err);
-                    return reject(err);
-                }
-                var keys = entities.map(function (entity) {
-                    return entity.key;
-                });
-                _this5.datastore.delete(keys, function (err, apiResponse) {
-                    if (err) {
-                        console.error(err);
-                        return reject(err);
-                    }
-                    resolve([undefined, apiResponse]);
-                });
-            });
+						try {
+								var dsQuery = _this5.datastore.createQuery(_this5.getKind(mapper, opts));
+								dsQuery = _this5.filterQuery(dsQuery, query, opts);
+								// dsQuery = dsQuery.select('__key__');
+								_this5.datastore.runQuery(dsQuery, function (err, entities) {
+										if (err) {
+												return reject(err);
+										}
+										var keys = entities.map(function (entity) {
+												entity.id = (parseInt(entity.id, 10) == entity.id) ? parseInt(entity.id, 10) : entity.id;
+												return _this5.datastore.key([_this5.getKind(mapper, opts), entity.id]);
+										});
+										_this5.datastore.delete(keys, function (err, apiResponse) {
+												if (err) {
+														return reject(err);
+												}
+												resolve([undefined, apiResponse]);
+										});
+								});
+						} catch (e) {
+								return reject(e);
+						}
         });
     },
-
 
     /**
      * Retrieve the record with the given primary key. Internal method used by
@@ -415,26 +420,24 @@ jsDataAdapter.Adapter.extend({
     _findAll: function _findAll(mapper, query, opts) {
 
         var _this7 = this;
+        var meta = {};
 
-        return new jsData
-            .utils
-            .Promise(
-                function (resolve, reject) {
-                    try {
-                        var dsQuery = _this7.datastore.createQuery(_this7.getKind(mapper, opts));
-                        dsQuery = _this7.filterQuery(dsQuery, query, opts);
-                        _this7.datastore.runQuery(dsQuery, function (err, entities) {
-                            if (err) {
-                                return reject(err);
-                            }
-                            return resolve(entities);
-                        });
-                    } catch (e) {
-                        return reject(e);
-                    }
-                });
+        return new jsData.utils.Promise(function (resolve, reject) {
+						try {
+								var dsQuery = _this7.datastore.createQuery(_this7.getKind(mapper, opts));
+								dsQuery = _this7.filterQuery(dsQuery, query, opts);
+								_this7.datastore.runQuery(dsQuery, function (err, entities) {
+										if (err) {
+												return reject(err);
+										}
+										entities = [entities];
+										return resolve(entities);
+								});
+						} catch (e) {
+								return reject(e);
+						}
+				});
     },
-
 
     _sum: function _sum(mapper, field, query, opts) {
         var _this8 = this;
@@ -463,7 +466,6 @@ jsDataAdapter.Adapter.extend({
             });
         });
     },
-
 
     /**
      * Internal method used by DataStoreAdapter#_update and
@@ -516,7 +518,6 @@ jsDataAdapter.Adapter.extend({
         });
     },
 
-
     /**
      * Apply the given update to the record with the specified primary key.
      * Internal method used by Adapter#update.
@@ -541,7 +542,6 @@ jsDataAdapter.Adapter.extend({
             throw new Error('Not Found');
         });
     },
-
 
     /**
      * Apply the given update to all records that match the selection query.
@@ -576,7 +576,6 @@ jsDataAdapter.Adapter.extend({
             return [[], {}];
         });
     },
-
 
     /**
      * Update the given records in a single batch. Internal method used by
@@ -619,31 +618,35 @@ jsDataAdapter.Adapter.extend({
             return [[], {}];
         });
     },
+
     loadBelongsTo: function loadBelongsTo(mapper, def, records, __opts) {
         if (jsData.utils.isObject(records) && !jsData.utils.isArray(records)) {
             return __super__.loadBelongsTo.call(this, mapper, def, records, __opts);
         }
         throw new Error('findAll with belongsTo not supported!');
     },
+
     loadHasMany: function loadHasMany(mapper, def, records, __opts) {
         if (jsData.utils.isObject(records) && !jsData.utils.isArray(records)) {
             return __super__.loadHasMany.call(this, mapper, def, records, __opts);
         }
         throw new Error('findAll with hasMany not supported!');
     },
+
     loadHasOne: function loadHasOne(mapper, def, records, __opts) {
         if (jsData.utils.isObject(records) && !jsData.utils.isArray(records)) {
             return __super__.loadHasOne.call(this, mapper, def, records, __opts);
         }
         throw new Error('findAll with hasOne not supported!');
     },
+
     loadHasManyLocalKeys: function loadHasManyLocalKeys() {
         throw new Error('find/findAll with hasMany & localKeys not supported!');
     },
+
     loadHasManyForeignKeys: function loadHasManyForeignKeys() {
         throw new Error('find/findAll with hasMany & foreignKeys not supported!');
     },
-
 
     /**
      * Resolve the Cloud Datastore kind for the specified Mapper with the given
@@ -659,7 +662,6 @@ jsDataAdapter.Adapter.extend({
         opts || (opts = {});
         return jsData.utils.isUndefined(opts.kind) ? jsData.utils.isUndefined(mapper.kind) ? mapper.name : mapper.kind : opts.kind;
     },
-
 
     /**
      * Resolve the predicate function for the specified operator based on the
