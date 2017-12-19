@@ -4,31 +4,31 @@
 
 'use strict';
 
-var jsData = require('js-data');
+var jsData        = require('js-data');
 var jsDataAdapter = require('js-data-adapter');
 
 var slicedToArray = function () {
 
   function sliceIterator(arr, i) {
     var _arr = [];
-    var _n = true;
-    var _d = false;
-    var _e = undefined;
+    var _n   = true;
+    var _d   = false;
+    var _e   = undefined;
 
     try {
       for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
         _arr.push(_s.value);
 
-        if (i && _arr.length === i) break;
+        if ( i && _arr.length === i ) break;
       }
     } catch (err) {
       _d = true;
       _e = err;
     } finally {
       try {
-        if (!_n && _i["return"]) _i["return"]();
+        if ( !_n && _i["return"] ) _i["return"]();
       } finally {
-        if (_d) throw _e;
+        if ( _d ) throw _e;
       }
     }
 
@@ -36,9 +36,9 @@ var slicedToArray = function () {
   }
 
   return function (arr, i) {
-    if (Array.isArray(arr)) {
+    if ( Array.isArray(arr) ) {
       return arr;
-    } else if (Symbol.iterator in Object(arr)) {
+    } else if ( Symbol.iterator in Object(arr) ) {
       return sliceIterator(arr, i);
     } else {
       throw new TypeError("Invalid attempt to destructure non-iterable instance");
@@ -63,18 +63,18 @@ var equal = function equal(query, field, value) {
  * @property {Function} <= "Less than or equal to" operator.
  */
 var OPERATORS = {
-  '==': equal,
-  '===': equal,
-  '>': function _(query, field, value) {
+  '=='  : equal,
+  '===' : equal,
+  '>'   : function _(query, field, value) {
     return query.filter(field, '>', value);
   },
-  '>=': function _(query, field, value) {
+  '>='  : function _(query, field, value) {
     return query.filter(field, '>=', value);
   },
-  '<': function _(query, field, value) {
+  '<'   : function _(query, field, value) {
     return query.filter(field, '<', value);
   },
-  '<=': function _(query, field, value) {
+  '<='  : function _(query, field, value) {
     return query.filter(field, '<=', value);
   }
 };
@@ -82,11 +82,11 @@ var OPERATORS = {
 
 function DataStoreAdapter(options) {
 
-  if ('undefined' === typeof options ||
-      'undefined' === typeof options.config ||
-      'undefined' === typeof options.config.projectId ||
-      'undefined' === typeof options.config.namespace ||
-      'undefined' === typeof options.config.keyFilename
+  if ( 'undefined' === typeof options ||
+    'undefined' === typeof options.config ||
+    'undefined' === typeof options.config.projectId ||
+    'undefined' === typeof options.config.namespace ||
+    'undefined' === typeof options.config.keyFilename
   ) {
     // TODO EMIT ERROR MISSING OPTIONS
     console.error('TODO EMIT ERROR MISSING OPTIONS');
@@ -103,7 +103,7 @@ function DataStoreAdapter(options) {
 
 jsDataAdapter.Adapter.extend({
 
-  constructor: DataStoreAdapter,
+  constructor : DataStoreAdapter,
 
 
   /**
@@ -122,102 +122,102 @@ jsDataAdapter.Adapter.extend({
    * @param {Object} [opts.operators] Override the default predicate functions
    * for specified operators.
    */
-  filterQuery: function filterQuery(dsQuery, query, opts) {
-      var _this = this;
+  filterQuery : function filterQuery(dsQuery, query, opts) {
+    var _this = this;
 
-      query = jsData.utils.plainCopy(query || {});
-      opts || (opts = {});
-      opts.operators || (opts.operators = {});
-      query.where || (query.where = {});
-      query.orderBy || (query.orderBy = query.sort);
-      query.orderBy || (query.orderBy = []);
-      query.skip || (query.skip = query.offset);
+    query = jsData.utils.plainCopy(query || {});
+    opts || (opts = {});
+    opts.operators || (opts.operators = {});
+    query.where || (query.where = {});
+    query.orderBy || (query.orderBy = query.sort);
+    query.orderBy || (query.orderBy = []);
+    query.skip || (query.skip = query.offset);
 
-      // Transform non-keyword properties to "where" clause configuration
-      jsData.utils.forOwn(query, function (config, keyword) {
-        if (jsDataAdapter.reserved.indexOf(keyword) === -1) {
-          if (jsData.utils.isObject(config)) {
-            query.where[keyword] = config;
-          } else {
-            query.where[keyword] = {
-              '==': config
-            };
-          }
-          delete query[keyword];
+    // Transform non-keyword properties to "where" clause configuration
+    jsData.utils.forOwn(query, function (config, keyword) {
+      if ( jsDataAdapter.reserved.indexOf(keyword) === -1 ) {
+        if ( jsData.utils.isObject(config) ) {
+          query.where[keyword] = config;
+        } else {
+          query.where[keyword] = {
+            '==' : config
+          };
         }
-      });
+        delete query[keyword];
+      }
+    });
 
-      // Apply filter
-      if (Object.keys(query.where).length !== 0) {
-        jsData.utils.forOwn(query.where, function (criteria, field) {
-          if (!jsData.utils.isObject(criteria)) {
-            query.where[field] = {
-              '==': criteria
-            };
+    // Apply filter
+    if ( Object.keys(query.where).length !== 0 ) {
+      jsData.utils.forOwn(query.where, function (criteria, field) {
+        if ( !jsData.utils.isObject(criteria) ) {
+          query.where[field] = {
+            '==' : criteria
+          };
+        }
+
+        jsData.utils.forOwn(criteria, function (value, operator) {
+          var isOr      = false;
+          var _operator = operator;
+          if ( _operator && _operator[0] === '|' ) {
+            _operator = _operator.substr(1);
+            isOr      = true;
           }
-
-          jsData.utils.forOwn(criteria, function (value, operator) {
-            var isOr = false;
-            var _operator = operator;
-            if (_operator && _operator[0] === '|') {
-              _operator = _operator.substr(1);
-              isOr = true;
-            }
-            var predicateFn = _this.getOperator(_operator, opts);
-            if (predicateFn) {
-              if (isOr) {
-                throw new Error('Operator ' + operator + ' not supported!');
-              } else {
-                dsQuery = predicateFn(dsQuery, field, value);
-              }
-            } else {
+          var predicateFn = _this.getOperator(_operator, opts);
+          if ( predicateFn ) {
+            if ( isOr ) {
               throw new Error('Operator ' + operator + ' not supported!');
+            } else {
+              dsQuery = predicateFn(dsQuery, field, value);
             }
-          });
-        });
-      }
-
-      // Apply sort
-      if (query.orderBy) {
-        if (jsData.utils.isString(query.orderBy)) {
-          query.orderBy = [[query.orderBy, 'asc']];
-        }
-        query.orderBy.forEach(function (clause) {
-          if (jsData.utils.isString(clause)) {
-            clause = [clause, 'asc'];
+          } else {
+            throw new Error('Operator ' + operator + ' not supported!');
           }
-          dsQuery = clause[1].toUpperCase() === 'DESC' ? dsQuery.order(clause[0], {descending: true}) : dsQuery.order(clause[0]);
-        });
-      }
-
-      // Apply skip/offset
-      if (query.skip) {
-        dsQuery = dsQuery.offset(+query.skip);
-      }
-
-      // Apply limit
-      if (query.limit) {
-        dsQuery = dsQuery.limit(+query.limit);
-      }
-
-      return dsQuery;
-  },
-  _count: function _count(mapper, query, opts) {
-      var _this2 = this;
-
-      opts || (opts = {});
-      query || (query = {});
-
-      return new jsData.utils.Promise(function (resolve, reject) {
-        var dsQuery = _this2.datastore.createQuery(_this2.getKind(mapper, opts));
-        dsQuery = _this2.filterQuery(dsQuery, query, opts).select('__key__');
-        _this2.datastore.runQuery(dsQuery, function (err, entities) {
-          if (err) {
-              return reject(err);
-          }
-          return resolve([entities ? entities.length : 0, {}]);
         });
       });
+    }
+
+    // Apply sort
+    if ( query.orderBy ) {
+      if ( jsData.utils.isString(query.orderBy) ) {
+        query.orderBy = [[query.orderBy, 'asc']];
+      }
+      query.orderBy.forEach(function (clause) {
+        if ( jsData.utils.isString(clause) ) {
+          clause = [clause, 'asc'];
+        }
+        dsQuery = clause[1].toUpperCase() === 'DESC' ? dsQuery.order(clause[0], {descending : true}) : dsQuery.order(clause[0]);
+      });
+    }
+
+    // Apply skip/offset
+    if ( query.skip ) {
+      dsQuery = dsQuery.offset(+query.skip);
+    }
+
+    // Apply limit
+    if ( query.limit ) {
+      dsQuery = dsQuery.limit(+query.limit);
+    }
+
+    return dsQuery;
+  },
+  _count      : function _count(mapper, query, opts) {
+    var _this2 = this;
+
+    opts || (opts = {});
+    query || (query = {});
+
+    return new jsData.utils.Promise(function (resolve, reject) {
+      var dsQuery = _this2.datastore.createQuery(_this2.getKind(mapper, opts));
+      dsQuery     = _this2.filterQuery(dsQuery, query, opts).select('__key__');
+      _this2.datastore.runQuery(dsQuery, function (err, entities) {
+        if ( err ) {
+          return reject(err);
+        }
+        return resolve([entities ? entities.length : 0, {}]);
+      });
+    });
   },
 
 
@@ -231,38 +231,38 @@ jsDataAdapter.Adapter.extend({
    * @param {(Object|Object[])} records The record or records to be created.
    * @return {Promise}
    */
-  _createHelper: function _createHelper(mapper, records) {
+  _createHelper : function _createHelper(mapper, records) {
 
     var _this3 = this;
 
     var singular = !jsData.utils.isArray(records);
-    if (singular) {
-        records = [records];
+    if ( singular ) {
+      records = [records];
     }
     records = jsData.utils.plainCopy(records);
     return new jsData.utils.Promise(
       function (resolve, reject) {
         try {
-          var apiResponse = void 0;
-          var idAttribute = mapper.idAttribute;
+          var apiResponse   = void 0;
+          var idAttribute   = mapper.idAttribute;
           var incompleteKey = _this3.datastore.key([_this3.getKind(mapper)]);
 
           // Allocate ids
           _this3.datastore.allocateIds(incompleteKey, records.length, function (err, keys) {
-            if (err) {
+            if ( err ) {
               console.error(err);
               return reject(err);
             }
             var entities = records.map(function (_record, i) {
               jsData.utils.set(_record, idAttribute, keys[i].path[1]);
               return {
-                key: keys[i],
-                data: _record
+                key  : keys[i],
+                data : _record
               };
             });
             // Save records
             _this3.datastore.save(entities, function (err, _apiResponse) {
-              if (err) {
+              if ( err ) {
                 console.error(err);
                 return reject(err);
               }
@@ -288,7 +288,7 @@ jsDataAdapter.Adapter.extend({
    * @param {Object} [opts] Configuration options.
    * @return {Promise}
    */
-  _create: function _create(mapper, props, opts) {
+  _create : function _create(mapper, props, opts) {
     return this._createHelper(mapper, props, opts);
   },
 
@@ -304,7 +304,7 @@ jsDataAdapter.Adapter.extend({
    * @param {Object} [opts] Configuration options.
    * @return {Promise}
    */
-  _createMany: function _createMany(mapper, props, opts) {
+  _createMany : function _createMany(mapper, props, opts) {
     return this._createHelper(mapper, props, opts);
   },
 
@@ -320,13 +320,13 @@ jsDataAdapter.Adapter.extend({
    * response object.
    * @return {Promise}
    */
-  _destroy: function _destroy(mapper, id, opts) {
+  _destroy : function _destroy(mapper, id, opts) {
     var _this4 = this;
 
     return new jsData.utils.Promise(function (resolve, reject) {
       // googledatastore create his key based on key value we send.
       // String -> 'name', Int -> 'id
-      id = (parseInt(id, 10) == id) ? parseInt(id, 10) : id;
+      id      = (parseInt(id, 10) == id) ? parseInt(id, 10) : id;
       var key = _this4.datastore.key([_this4.getKind(mapper, opts), id]);
       _this4.datastore.delete(key, function (err, apiResponse) {
         return err ? reject(err) : resolve([undefined, apiResponse]);
@@ -344,25 +344,24 @@ jsDataAdapter.Adapter.extend({
    * @param {Object} [query] Selection query.
    * @return {Promise}
    */
-  _destroyAll: function _destroyAll(mapper, query, opts) {
+  _destroyAll : function _destroyAll(mapper, query, opts) {
 
     var _this5 = this;
 
     return new jsData.utils.Promise(function (resolve, reject) {
       try {
         var dsQuery = _this5.datastore.createQuery(_this5.getKind(mapper, opts));
-        dsQuery = _this5.filterQuery(dsQuery, query, opts);
-        // dsQuery = dsQuery.select('__key__');
+        dsQuery     = _this5.filterQuery(dsQuery, query, opts);
+        dsQuery = dsQuery.select('__key__');
         _this5.datastore.runQuery(dsQuery, function (err, entities) {
-          if (err) {
+          if ( err ) {
             return reject(err);
           }
           var keys = entities.map(function (entity) {
-            entity.id = (parseInt(entity.id, 10) == entity.id) ? parseInt(entity.id, 10) : entity.id;
-            return _this5.datastore.key([_this5.getKind(mapper, opts), entity.id]);
+            return entity[_this5.datastore.KEY];
           });
           _this5.datastore.delete(keys, function (err, apiResponse) {
-            if (err) {
+            if ( err ) {
               return reject(err);
             }
             resolve([undefined, apiResponse]);
@@ -385,19 +384,19 @@ jsDataAdapter.Adapter.extend({
    * @param {Object} [opts] Configuration options.
    * @return {Promise}
    */
-  _find: function _find(mapper, id, opts) {
+  _find : function _find(mapper, id, opts) {
     var _this6 = this;
 
     return new jsData.utils.Promise(function (resolve, reject) {
       // googledatastore create his key based on key value we send.
       // String -> 'name', Int -> 'id
-      id = (parseInt(id, 10) == id) ? parseInt(id, 10) : id;
+      id      = (parseInt(id, 10) == id) ? parseInt(id, 10) : id;
       var key = _this6.datastore.key([_this6.getKind(mapper, opts), id]);
       _this6.datastore.get(key, function (err, entity) {
-        if (!err && !entity) {
+        if ( !err && !entity ) {
           err = {
-            code: 404,
-            message: 'Not found'
+            code    : 404,
+            message : 'Not found'
           };
         }
         return err ? reject(err) : resolve([entity ? entity : undefined, {}]);
@@ -417,17 +416,17 @@ jsDataAdapter.Adapter.extend({
    * @param {Object} [opts] Configuration options.
    * @return {Promise}
    */
-  _findAll: function _findAll(mapper, query, opts) {
+  _findAll : function _findAll(mapper, query, opts) {
 
     var _this7 = this;
-    var meta = {};
+    var meta   = {};
 
     return new jsData.utils.Promise(function (resolve, reject) {
       try {
         var dsQuery = _this7.datastore.createQuery(_this7.getKind(mapper, opts));
-        dsQuery = _this7.filterQuery(dsQuery, query, opts);
+        dsQuery     = _this7.filterQuery(dsQuery, query, opts);
         _this7.datastore.runQuery(dsQuery, function (err, entities) {
-          if (err) {
+          if ( err ) {
             return reject(err);
           }
           entities = [entities];
@@ -439,10 +438,10 @@ jsDataAdapter.Adapter.extend({
     });
   },
 
-  _sum: function _sum(mapper, field, query, opts) {
+  _sum : function _sum(mapper, field, query, opts) {
     var _this8 = this;
 
-    if (!jsData.utils.isString(field)) {
+    if ( !jsData.utils.isString(field) ) {
       throw new Error('field must be a string!');
     }
     opts || (opts = {});
@@ -451,12 +450,12 @@ jsDataAdapter.Adapter.extend({
 
     return new jsData.utils.Promise(function (resolve, reject) {
       var dsQuery = _this8.datastore.createQuery(_this8.getKind(mapper, opts));
-      dsQuery = _this8.filterQuery(dsQuery, query, opts);
-      if (canSelect) {
+      dsQuery     = _this8.filterQuery(dsQuery, query, opts);
+      if ( canSelect ) {
         dsQuery = dsQuery.select(field);
       }
       _this8.datastore.runQuery(dsQuery, function (err, entities) {
-        if (err) {
+        if ( err ) {
           return reject(err);
         }
         var sum = entities.reduce(function (sum, entity) {
@@ -479,37 +478,37 @@ jsDataAdapter.Adapter.extend({
    * @param {Object} [opts] Configuration options.
    * @return {Promise}
    */
-  _updateHelper: function _updateHelper(mapper, records, props, opts) {
+  _updateHelper : function _updateHelper(mapper, records, props, opts) {
     var _this9 = this;
 
     var singular = !jsData.utils.isArray(records);
-    if (singular) {
+    if ( singular ) {
       records = [records];
-      props = [props];
+      props   = [props];
     }
     return new jsData.utils.Promise(function (resolve, reject) {
-      if (!records.length) {
-          return resolve([singular ? undefined : [], {}]);
+      if ( !records.length ) {
+        return resolve([singular ? undefined : [], {}]);
       }
       var idAttribute = mapper.idAttribute;
-      var entities = [];
-      var _records = [];
+      var entities    = [];
+      var _records    = [];
       records.forEach(function (record, i) {
-        if (!record) {
+        if ( !record ) {
           return;
         }
         var id = jsData.utils.get(record, idAttribute);
-        if (!jsData.utils.isUndefined(id)) {
+        if ( !jsData.utils.isUndefined(id) ) {
           jsData.utils.deepMixIn(record, props[i]);
           entities.push({
-            method: 'update',
-            key: _this9.datastore.key([_this9.getKind(mapper, opts), id]),
-            data: record
+            method : 'update',
+            key    : _this9.datastore.key([_this9.getKind(mapper, opts), id]),
+            data   : record
           });
           _records.push(record);
         }
       });
-      if (!_records.length) {
+      if ( !_records.length ) {
         return resolve([singular ? undefined : [], {}]);
       }
       _this9.datastore.save(entities, function (err, apiResponse) {
@@ -530,12 +529,12 @@ jsDataAdapter.Adapter.extend({
    * @param {Object} [opts] Configuration options.
    * @return {Promise}
    */
-  _update: function _update(mapper, id, props, opts) {
+  _update : function _update(mapper, id, props, opts) {
     var _this10 = this;
 
     props || (props = {});
     return this._find(mapper, id, opts).then(function (result) {
-      if (result[0]) {
+      if ( result[0] ) {
         props = jsData.utils.plainCopy(props);
         return _this10._updateHelper(mapper, result[0], props, opts);
       }
@@ -555,7 +554,7 @@ jsDataAdapter.Adapter.extend({
    * @param {Object} [opts] Configuration options.
    * @return {Promise}
    */
-  _updateAll: function _updateAll(mapper, props, query, opts) {
+  _updateAll : function _updateAll(mapper, props, query, opts) {
     var _this11 = this;
 
     props || (props = {});
@@ -567,7 +566,7 @@ jsDataAdapter.Adapter.extend({
       records = records.filter(function (record) {
         return record;
       });
-      if (records.length) {
+      if ( records.length ) {
         props = jsData.utils.plainCopy(props);
         return _this11._updateHelper(mapper, records, records.map(function () {
           return props;
@@ -588,12 +587,12 @@ jsDataAdapter.Adapter.extend({
    * @param {Object} [opts] Configuration options.
    * @return {Promise}
    */
-  _updateMany: function _updateMany(mapper, records, opts) {
+  _updateMany : function _updateMany(mapper, records, opts) {
     var _this12 = this;
 
     records || (records = []);
     var idAttribute = mapper.idAttribute;
-    var tasks = records.map(function (record) {
+    var tasks       = records.map(function (record) {
       return _this12._find(mapper, jsData.utils.get(record, idAttribute), opts);
     });
     return jsData.utils.Promise.all(tasks).then(function (results) {
@@ -601,17 +600,17 @@ jsDataAdapter.Adapter.extend({
         return result[0];
       });
       _records.forEach(function (record, i) {
-        if (!record) {
+        if ( !record ) {
           records[i] = undefined;
         }
       });
       _records = _records.filter(function (record) {
         return record;
       });
-      records = records.filter(function (record) {
+      records  = records.filter(function (record) {
         return record;
       });
-      if (_records.length) {
+      if ( _records.length ) {
         records = jsData.utils.plainCopy(records);
         return _this12._updateHelper(mapper, _records, records, opts);
       }
@@ -619,32 +618,32 @@ jsDataAdapter.Adapter.extend({
     });
   },
 
-  loadBelongsTo: function loadBelongsTo(mapper, def, records, __opts) {
-    if (jsData.utils.isObject(records) && !jsData.utils.isArray(records)) {
+  loadBelongsTo : function loadBelongsTo(mapper, def, records, __opts) {
+    if ( jsData.utils.isObject(records) && !jsData.utils.isArray(records) ) {
       return __super__.loadBelongsTo.call(this, mapper, def, records, __opts);
     }
     throw new Error('findAll with belongsTo not supported!');
   },
 
-  loadHasMany: function loadHasMany(mapper, def, records, __opts) {
-    if (jsData.utils.isObject(records) && !jsData.utils.isArray(records)) {
+  loadHasMany : function loadHasMany(mapper, def, records, __opts) {
+    if ( jsData.utils.isObject(records) && !jsData.utils.isArray(records) ) {
       return __super__.loadHasMany.call(this, mapper, def, records, __opts);
     }
     throw new Error('findAll with hasMany not supported!');
   },
 
-  loadHasOne: function loadHasOne(mapper, def, records, __opts) {
-    if (jsData.utils.isObject(records) && !jsData.utils.isArray(records)) {
+  loadHasOne : function loadHasOne(mapper, def, records, __opts) {
+    if ( jsData.utils.isObject(records) && !jsData.utils.isArray(records) ) {
       return __super__.loadHasOne.call(this, mapper, def, records, __opts);
     }
     throw new Error('findAll with hasOne not supported!');
   },
 
-  loadHasManyLocalKeys: function loadHasManyLocalKeys() {
+  loadHasManyLocalKeys : function loadHasManyLocalKeys() {
     throw new Error('find/findAll with hasMany & localKeys not supported!');
   },
 
-  loadHasManyForeignKeys: function loadHasManyForeignKeys() {
+  loadHasManyForeignKeys : function loadHasManyForeignKeys() {
     throw new Error('find/findAll with hasMany & foreignKeys not supported!');
   },
 
@@ -658,7 +657,7 @@ jsDataAdapter.Adapter.extend({
    * @param {Object} [opts.kind] Datastore kind.
    * @return {string} The kind.
    */
-  getKind: function getKind(mapper, opts) {
+  getKind : function getKind(mapper, opts) {
     opts || (opts = {});
     return jsData.utils.isUndefined(opts.kind) ? jsData.utils.isUndefined(mapper.kind) ? mapper.name : mapper.kind : opts.kind;
   },
@@ -674,7 +673,7 @@ jsDataAdapter.Adapter.extend({
    * for specified operators.
    * @return {*} The predicate function for the specified operator.
    */
-  getOperator: function getOperator(operator, opts) {
+  getOperator : function getOperator(operator, opts) {
     opts || (opts = {});
     opts.operators || (opts.operators = {});
     var ownOps = this.operators || {};
@@ -682,6 +681,6 @@ jsDataAdapter.Adapter.extend({
   }
 });
 
-exports.OPERATORS = OPERATORS;
+exports.OPERATORS        = OPERATORS;
 exports.DataStoreAdapter = DataStoreAdapter;
-exports.version = require('./package.json')['version'];
+exports.version          = require('./package.json')['version'];
