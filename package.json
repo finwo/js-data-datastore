@@ -4,7 +4,8 @@
   "description": "Datastore adapter for js-data",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Warning: no test specified\" && exit 0",
+    "release": "npm test && node scripts/contributors.js"
   },
   "repository": {
     "type": "git",
