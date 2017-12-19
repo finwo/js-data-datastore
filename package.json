@@ -1,6 +1,6 @@
 {
   "name": "js-data-datastore",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Datastore adapter for js-data",
   "main": "index.js",
   "scripts": {
