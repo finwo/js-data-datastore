@@ -352,14 +352,13 @@ jsDataAdapter.Adapter.extend({
       try {
         var dsQuery = _this5.datastore.createQuery(_this5.getKind(mapper, opts));
         dsQuery     = _this5.filterQuery(dsQuery, query, opts);
-        // dsQuery = dsQuery.select('__key__');
+        dsQuery = dsQuery.select('__key__');
         _this5.datastore.runQuery(dsQuery, function (err, entities) {
           if ( err ) {
             return reject(err);
           }
           var keys = entities.map(function (entity) {
-            entity.id = (parseInt(entity.id, 10) == entity.id) ? parseInt(entity.id, 10) : entity.id;
-            return _this5.datastore.key([_this5.getKind(mapper, opts), entity.id]);
+            return entity[_this5.datastore.KEY];
           });
           _this5.datastore.delete(keys, function (err, apiResponse) {
             if ( err ) {
