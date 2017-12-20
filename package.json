@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Warning: no test specified\" && exit 0",
     "release": "npm test && node scripts/contributors.js",
-    "prepublish": "npm-auto-version",
+    "prepublish": "git tag $(echo \"console.log(require('./package.json').version);\" | node)",
     "postpublish": "git push --tags"
   },
   "repository": {
@@ -18,8 +18,7 @@
   "dependencies": {
     "@google-cloud/datastore": "^1.1.0",
     "js-data": "^3.0.1",
-    "js-data-adapter": "^0.8.5",
-    "npm-auto-version": "^1.0.0"
+    "js-data-adapter": "^0.8.5"
   },
   "bugs": {
     "url": "https://github.com/trackthis/js-data-datastore/issues"
