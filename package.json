@@ -1,13 +1,11 @@
 {
   "name": "js-data-datastore",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "Datastore adapter for js-data",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Warning: no test specified\" && exit 0",
-    "release": "npm test && node scripts/contributors.js",
-    "temp": "git tag $(echo \"console.log(require('./package.json').version);\" | node)",
-    "postpublish": "git push --tags"
+    "release": "npm test && node scripts/contributors.js"
   },
   "repository": {
     "type": "git",
