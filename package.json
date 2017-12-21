@@ -4,7 +4,7 @@
   "description": "Datastore adapter for js-data",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Warning: no test specified\" && exit 0",
+    "test": "./node_modules/.bin/mocha test/index.js",
     "release": "npm test && node scripts/contributors.js"
   },
   "repository": {
@@ -22,5 +22,8 @@
     "url": "https://github.com/trackthis/js-data-datastore/issues"
   },
   "homepage": "https://github.com/trackthis/js-data-datastore#readme",
-  "devDependencies": {}
+  "devDependencies": {
+    "mocha": "^4.0.1",
+    "co-mocha": "^1.2.1"
+  }
 }
