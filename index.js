@@ -100,7 +100,6 @@ function DataStoreAdapter(options) {
   this.datastore = require('@google-cloud/datastore')(options.config);
 }
 
-
 jsDataAdapter.Adapter.extend({
 
   constructor : DataStoreAdapter,
@@ -220,7 +219,6 @@ jsDataAdapter.Adapter.extend({
     });
   },
 
-
   /**
    * Internal method used by DataStoreAdapter#_create and
    * DataStoreAdapter#_createMany.
@@ -277,7 +275,6 @@ jsDataAdapter.Adapter.extend({
       });
   },
 
-
   /**
    * Create a new record. Internal method used by Adapter#create.
    *
@@ -291,7 +288,6 @@ jsDataAdapter.Adapter.extend({
   _create : function _create(mapper, props, opts) {
     return this._createHelper(mapper, props, opts);
   },
-
 
   /**
    * Create multiple records in a single batch. Internal method used by
@@ -307,7 +303,6 @@ jsDataAdapter.Adapter.extend({
   _createMany : function _createMany(mapper, props, opts) {
     return this._createHelper(mapper, props, opts);
   },
-
 
   /**
    * Destroy the record with the given primary key. Internal method used by
@@ -404,6 +399,60 @@ jsDataAdapter.Adapter.extend({
     });
   },
 
+  /**
+   * detect Operators non provided by datastore and create eventually multiple queries to be run
+   * 
+   * @param   {object}    query to check and explode
+   * @return  {object[]}  array of queries to be run
+   */
+  compileFetchQueries: function compileFetchQueries(query) {
+    var _this = this,
+        where, 
+        output = [];
+    if (query.where)          where = query.where;
+    else                      where = query;
+    Object.keys(where).map(function (property) {
+      // explode 'in' operator
+      if (where[property]['in']) {
+        output = where[property]['in'].map(function (value) {
+          var _new = JSON.parse(JSON.stringify(query)),
+              _where;
+          if (_new.where) _where = _new.where;
+          else            _where = _new;
+          delete _where[property]['in'];
+          _where[property] = {'==' : value};
+          return _new;
+        });
+      }
+    });
+    if (output.length) {
+      //merge all results
+      var _q = [];
+      output.map(function (_query) {
+        // call recursively itself to explode queries obtained
+        _q = _q.concat(_this.compileFetchQueries(_query));
+      });
+      return _q;
+    } else {
+      return [query];
+    }
+  },
+
+  /**
+   * Managare filters not provided by datastore and apply options like sort if more db queries were made
+   * 
+   * @param   {object[]}    queries   queries ran by datastore
+   * @param   {record[]}    results   results provided by queries
+   * @return  {record[][]}            array containing in first item all the results filtered
+   */
+  compileFilterQueries: function compileFilterQueries(queries, results) {
+    // more then 1 query, need to sort results
+    if (queries.length > 1) {
+      // TODO: sorting
+    }
+    // TODO: detect filters like 'notIn', '!='
+    return [results];
+  },
 
   /**
    * Retrieve the records that match the selection query. Internal method used
@@ -421,20 +470,35 @@ jsDataAdapter.Adapter.extend({
     var _this7 = this;
     var meta   = {};
 
-    return new jsData.utils.Promise(function (resolve, reject) {
-      try {
-        var dsQuery = _this7.datastore.createQuery(_this7.getKind(mapper, opts));
-        dsQuery     = _this7.filterQuery(dsQuery, query, opts);
+    // explode query syntax for unsupported operators (like 'in')
+    var queries = _this7.compileFetchQueries(query),
+        p = [];
+    queries.forEach(function (_query) {
+      // all queryies are executed
+      var dsQuery = _this7.datastore.createQuery(_this7.getKind(mapper, opts));
+      dsQuery     = _this7.filterQuery(dsQuery, _query, opts);
+      p.push(new jsData.utils.Promise(function (resolve, reject) {
         _this7.datastore.runQuery(dsQuery, function (err, entities) {
-          if ( err ) {
-            return reject(err);
-          }
-          entities = [entities];
+          if ( err ) reject(err);
           return resolve(entities);
         });
-      } catch (e) {
-        return reject(e);
-      }
+      }));
+    });
+    return jsData.utils.Promise.all(p)
+    .then(function (res) {
+      //all results are merged togheter
+      var entities = [];
+      res.map(function(result) {
+        result.map(function(entity) {
+          var found = entities.find(function(_entity) { return _entity.id === entity.id;});
+          if (!found) entities.push(entity);
+        });
+      });
+      return entities;
+    })
+    .then(function (res) {
+      // all results are sorted and filtered if necessary
+      return _this7.compileFilterQueries(queries, res);
     });
   },
 
@@ -454,7 +518,7 @@ jsDataAdapter.Adapter.extend({
       if ( canSelect ) {
         dsQuery = dsQuery.select(field);
       }
-      _this8.datastore.runQuery(dsQuery, function (err, entities) {
+      _this8.datastore.res.map(dsQuery, function (err, entities) {
         if ( err ) {
           return reject(err);
         }
