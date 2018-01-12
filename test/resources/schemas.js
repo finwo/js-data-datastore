@@ -69,6 +69,14 @@ module.exports = {
           type        : 'string',
           description : 'Unique code of guest'
         },
+        age        : {
+          type        : 'number',
+          description : 'age of guest'
+        },
+        role       : {
+          type        : 'string',
+          description : 'role of guest'
+        },
         chair_code : {
           type        : 'string',
           description : 'id of chair'

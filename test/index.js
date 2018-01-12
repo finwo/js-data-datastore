@@ -7,7 +7,6 @@
 // Defining vars
 var path            = require('path'),
     co              = require('co'),
-    Promise         = require('bluebird'),
     jsdata          = require('js-data'),
     Container       = jsdata.Container,
     Schema          = jsdata.Schema,
@@ -16,8 +15,9 @@ var path            = require('path'),
     config          = {
                         projectId   : 'trackthis-179709',
                         namespace   : 'test',
-                        keyFilename : path.join('./', 'client-secret.json'),
-                        apiEndpoint : 'http://localhost:8081'
+                        keyFilename : './client-secret.json',
+                        apiEndpoint : 'http://localhost:8081',
+                        port        : 8081
                       },
     db              = require('./resources/database.js'),
     schemas         = require('./resources/schemas.js'),
@@ -33,7 +33,8 @@ var clearDB = function * () {
 
 var createDB = function * (entities) { 
   yield clearDB();
-  var localdb = Object.assign({}, db);
+  entities = entities || [];
+  var localdb = JSON.parse(JSON.stringify(db));
   if (entities.indexOf('tables') >= 0) {
     yield odm.createMany('table', localdb.tables);
     localdb.chairs.forEach(chair => {
@@ -52,7 +53,7 @@ var createDB = function * (entities) {
   return localdb;
 };
 
-describe.only('ODM configuration', function() {
+describe('ODM configuration', function() {
   
   it('initialize odm', function * () {
     
@@ -82,16 +83,22 @@ describe('Mapper functions', function() {
    * create
    */
   describe('create', function () {
+    
+    var localdb;
+    
+    before('create all entities', function * ()  {
+      localdb = yield createDB([]);
+    });
 
     it('create table', function * () {
-      var tmp_table = Object.assign({}, db.tables[0]);
+      var tmp_table = JSON.parse(JSON.stringify(db.tables[0]));
       var table = yield odm.create('table', tmp_table);
       assert.notEqual(table.id, undefined);
     });
 
     it('create table with hasMany[chair]', function * () {
-      var tmp_table = Object.assign({}, db.tables[0]);
-      tmp_table.chairs = db.chairs.filter(chair => chair.code.substring(1, 3) == tmp_table.code.substring(1, 3));
+      var tmp_table = JSON.parse(JSON.stringify(db.tables[0]));
+      tmp_table.chairs = localdb.chairs.filter(chair => chair.code.substring(1, 3) == tmp_table.code.substring(1, 3));
       var table = yield odm.create('table', tmp_table, {with : ['chairs']});
       assert.notEqual(table.id, undefined);
       assert.notEqual(table.chairs, undefined);
@@ -99,8 +106,8 @@ describe('Mapper functions', function() {
     });
     
     it('create chair with hasOne[guest] relation', function * () {
-      var tmp_chair = Object.assign({}, db.chairs[0]);
-      tmp_chair.guest = db.guests.find(guest => guest.code.substring(1, 5) == tmp_chair.code.substring(1, 5));
+      var tmp_chair = JSON.parse(JSON.stringify(db.chairs[0]));
+      tmp_chair.guest = localdb.guests.find(guest => guest.code.substring(1, 5) == tmp_chair.code.substring(1, 5));
       var chair = yield odm.create('chair', tmp_chair, {with : ['guest']});
       assert.notEqual(chair.id, undefined);
       assert.notEqual(chair.guest.id, undefined);
@@ -108,8 +115,8 @@ describe('Mapper functions', function() {
     });
     
     it('create chair with hasOne[guest] relation empty', function * () {
-      var tmp_chair = Object.assign({}, db.chairs[5]);
-      tmp_chair.guest = db.guests.find(guest => guest.code.substring(1, 5) == tmp_chair.code.substring(1, 5));
+      var tmp_chair = JSON.parse(JSON.stringify(db.chairs[5]));
+      tmp_chair.guest = localdb.guests.find(guest => guest.code.substring(1, 5) == tmp_chair.code.substring(1, 5));
       var chair = yield odm.create('chair', tmp_chair, {with : ['guest']});
       assert.notEqual(chair.id, undefined);
       assert.equal(chair.guest, undefined);
@@ -121,18 +128,24 @@ describe('Mapper functions', function() {
    * createMany
    */
   describe('createMany', function () {
-
-    it('createMany tables [' + db.tables.length + ']', function * () {
-      var tmp_tables = db.tables.slice(0, db.tables.length);
-      var tables = yield odm.createMany('table', tmp_tables);
-      tables.forEach(table => assert.notEqual(table.id, undefined));
-      assert.equal(tables.length, db.tables.length);
+    
+    var localdb;
+    
+    before('create all entities', function * ()  {
+      localdb = yield createDB([]);
     });
 
-    xit('createMany tables [' + db.tables.length + '] with hasMany[chair]', function * () {
-      var tmp_tables = db.tables.slice(0, db.tables.length);
+    it('createMany tables', function * () {
+      var tmp_tables = localdb.tables.slice(0, localdb.tables.length);
+      var tables = yield odm.createMany('table', tmp_tables);
+      tables.forEach(table => assert.notEqual(table.id, undefined));
+      assert.equal(tables.length, localdb.tables.length);
+    });
+
+    xit('createMany tables with hasMany[chair]', function * () {
+      var tmp_tables = localdb.tables.slice(0, localdb.tables.length);
       tmp_tables.forEach(table => {
-        table.chairs = db.chairs.filter(chair => chair.code.substring(1, 3) == table.code.substring(1, 3));
+        table.chairs = localdb.chairs.filter(chair => chair.code.substring(1, 3) == table.code.substring(1, 3));
       });
       var tables = yield odm.createMany('table', tmp_tables, {with : ['chairs']});
       tables.forEach(table => {
@@ -140,13 +153,13 @@ describe('Mapper functions', function() {
         assert.notEqual(table.chairs, undefined);
         table.chairs.forEach(chair => assert.equal(chair.table_code, table.id));
       });
-      assert.equal(tables.length, db.tables.length);
+      assert.equal(tables.length, localdb.tables.length);
     });
 
-    it('createMany chairs [' + db.chairs.length + '] with hasOne[guest] relation', function * () {
-      var tmp_chairs = db.chairs.slice(0, db.chairs.length);
+    it('createMany chairs with hasOne[guest] relation', function * () {
+      var tmp_chairs = localdb.chairs.slice(0, localdb.chairs.length);
       tmp_chairs.forEach(chair => {
-        chair.guest = db.guests.find(guest => guest.code.substring(1, 5) == chair.code.substring(1, 5));
+        chair.guest = localdb.guests.find(guest => guest.code.substring(1, 5) == chair.code.substring(1, 5));
       });
       var chairs = yield odm.createMany('chair', tmp_chairs);
       var guests_count = 0;
@@ -154,8 +167,8 @@ describe('Mapper functions', function() {
         assert.notEqual(chair.id, undefined);
         if (chair.guest) guests_count++;
       });
-      assert.equal(guests_count, db.guests.length)
-      assert.equal(chairs.length, db.chairs.length);
+      assert.equal(guests_count, localdb.guests.length)
+      assert.equal(chairs.length, localdb.chairs.length);
     });
 
   });
@@ -301,6 +314,18 @@ describe('Mapper functions', function() {
       assert.equal(tables.length, localdb.tables.filter(table => table.max_chairs === 6).length);
       tables.forEach(table => assert.notEqual(table.id, undefined));
     });
+    
+    it('findAll guests with age in [30, 35]', function * ()  {
+      var guests = yield odm.findAll('guest', {"age" : {"in" : [30, 35]}});
+      assert.equal(guests.length, localdb.guests.filter(guest => [30, 35].indexOf(guest.age) >= 0).length);
+      guests.forEach(guest => assert.notEqual(guest.id, undefined));
+    });
+    
+    it('findAll guests with age in [30, 35] and role in [admin, manager]', function * ()  {
+      var guests = yield odm.findAll('guest', {"age" : {"in" : [30, 35]}, "role" : {"in" : ['admin', 'manager']}});
+      assert.equal(guests.length, localdb.guests.filter(guest => ([30, 35].indexOf(guest.age)+['admin', 'manager'].indexOf(guest.role)) >= 0).length);
+      guests.forEach(guest => assert.notEqual(guest.id, undefined));
+    });
 
     xit('findAll tables loading hasMany[chair] relation', function * ()  {
       var tables = yield odm.findAll('table', {}, {with : ['chairs']});
@@ -409,27 +434,27 @@ describe('Mapper functions', function() {
       localdb = yield createDB(['tables', 'chairs', 'guests']);
     });
 
-    it('destroyAll guests', function * () {
+    xit('destroyAll guests', function * () {
       yield odm.destroyAll('guest');
-      var check = yield odm.findAll('guest');
+      var check = yield odm.destroyAll('guest');
       assert(check.length, 0);
     });
     
-    it('destroyAll all chairs related to not existing table', function * () {
+    xit('destroyAll all chairs related to not existing table', function * () {
       yield odm.destroyAll('chair', {"table_code" : { "===" : 123123 }});
-      var check = yield odm.findAll('chair');
+      var check = yield odm.destroyAll('chair');
       assert(check.length, localdb.chairs.length);
     });
     
-    it('destroyAll chairs related to existing table', function * () {
+    xit('destroyAll chairs related to existing table', function * () {
       yield odm.destroyAll('chair', {"table_code" : { "===" : localdb.tables[0].id }});
-      var check = yield odm.findAll('chair');
+      var check = yield odm.destroyAll('chair');
       assert(check.length, localdb.chairs.filter(chair => chair.table_code != localdb.tables[0].id).length);
     });
     
-    it('destroyAll tables limit 1', function * () {
+    xit('destroyAll tables limit 1', function * () {
       yield odm.destroyAll('chair', {limit : 1});
-      var check = yield odm.findAll('chair');
+      var check = yield odm.destroyAll('chair');
       assert(check.length,(localdb.tables.length-1));
     });
 
@@ -470,7 +495,7 @@ describe('Mapper functions', function() {
       localdb = yield createDB(['tables', 'chairs', 'guests']);
     });
 
-    it('updateMany chairs changing table_code', function * () {
+    xit('updateMany chairs changing table_code', function * () {
       var chairs = yield odm.udpateMany('chair', localdb.chairs.filter(chair => chair.table_code == localdb.tables[0].id), {'table_code' : '123123123'});
       //TODO: check results
     });
@@ -501,7 +526,7 @@ describe('Record functions', function() {
   /**
    * loadRelations
    */
-  describe.only('loadRelations', function () {
+  describe('loadRelations', function () {
     
     var localdb;
     
