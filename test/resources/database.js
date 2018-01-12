@@ -45,30 +45,44 @@ module.exports = {
     {
       name        : 'Mark',
       code        : 'g010101',
+      age         : 25,
+      role        : 'developer',
       chair_code  : undefined
     },{
       name        : 'Ronald',
       code        : 'g010202',
+      age         : 30,
+      role        : 'manager',
       chair_code  : undefined
     },{
       name        : 'Marco',
       code        : 'g020103',
+      age         : 30,
+      role        : 'developer',
       chair_code  : undefined
     },{
       name        : 'Robin',
       code        : 'g020204',
+      age         : 22,
+      role        : 'developer',
       chair_code  : undefined
     },{
       name        : 'Dariusz',
       code        : 'g020305',
+      age         : 35,
+      role        : 'manager',
       chair_code  : undefined
     },{
       name        : 'G01aby',
       code        : 'g030206',
+      age         : 40,
+      role        : 'admin',
       chair_code  : undefined
     },{
       name        : 'Rene',
       code        : 'g030307',
+      age         : 42,
+      role        : 'admin',
       chair_code  : undefined
     }
   ]
