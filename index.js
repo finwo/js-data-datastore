@@ -518,7 +518,7 @@ jsDataAdapter.Adapter.extend({
       if ( canSelect ) {
         dsQuery = dsQuery.select(field);
       }
-      _this8.datastore.res.map(dsQuery, function (err, entities) {
+      _this8.datastore.runQuery(dsQuery, function (err, entities) {
         if ( err ) {
           return reject(err);
         }
