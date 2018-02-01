@@ -1,616 +1,809 @@
-/**
- * Tests to check odm schemas
- * 
- * @author Marco
- */
-
 // Defining vars
-var path            = require('path'),
-    co              = require('co'),
-    jsdata          = require('js-data'),
-    Container       = jsdata.Container,
-    Schema          = jsdata.Schema,
-    jsDataDatastore = require('../index.js'),
-    assert          = require('assert'),
-    config          = {
-                        projectId   : 'trackthis-179709',
-                        namespace   : 'test',
-                        keyFilename : './client-secret.json',
-                        apiEndpoint : 'http://localhost:8081',
-                        port        : 8081
-                      },
-    db              = require('./resources/database.js'),
-    schemas         = require('./resources/schemas.js'),
-    odm;
+
+var path          = require('path'),
+    co            = require('co'),
+    jsdata        = require('js-data'),
+    Container     = jsdata.Container,
+    Schema        = jsdata.Schema,
+    MemoryAdapter = require(path.join('..', 'js-data-memory.js')),
+    assert        = require('assert'),
+    db            = require(path.join(__dirname, 'resources', 'database.js')),
+    schemas       = require(path.join(__dirname, 'resources', 'schemas.js')),
+    config        = {
+      adapter         : 'js-data-memory',
+      name            : 'memory',
+      registerOptions : {
+        'default' : true
+      }
+    };
+
+//needed to use store inside custom functions (get, load) inside 'log' schema
+global.store = {};
 
 require('co-mocha');
 
-var clearDB = function * () { 
-  yield odm.destroyAll('table', {});
-  yield odm.destroyAll('chair', {});
-  yield odm.destroyAll('guest', {});
+var _find = function(need, array, compare) {
+  return JSON.parse(JSON.stringify(array)).find(function(item) {
+    if (Array.isArray(item[compare])) {
+      return item[compare].indexOf(need) >= 0;
+    } else {
+      return need == item[compare];
+    }
+  });
+}
+
+var _filter = function(need, array, compare) {
+  return JSON.parse(JSON.stringify(array)).filter(function(item) {
+    if (Array.isArray(need)) {
+      return need.indexOf(item[compare]) >= 0;
+    } else if (Array.isArray(item[compare])) {
+      return item[compare].indexOf(need) >= 0;
+    } else {
+      return need == item[compare];
+    }
+  });
+}
+
+var _clearDB = function * () { 
+  yield store.destroyAll('table');
+  yield store.destroyAll('chair');
+  yield store.destroyAll('guest');
+  yield store.destroyAll('log');
 };
 
-var createDB = function * (entities) { 
-  yield clearDB();
-  entities = entities || [];
+var _createDB = function * (check) { 
+  
+  yield _clearDB();
+  
   var localdb = JSON.parse(JSON.stringify(db));
-  if (entities.indexOf('tables') >= 0) {
-    yield odm.createMany('table', localdb.tables);
-    localdb.chairs.forEach(chair => {
-      chair.table_code = localdb.tables.find(table => (chair.code.substring(1, 3) == table.code.substring(1, 3))).id;
+
+  if (check) {
+    //create tables
+    var createMany = yield store.createMany('table', localdb.table);
+  
+    // create chairs
+    localdb.chair.forEach(function (chair) {
+      chair.table_id = _find(chair.table_id, localdb.table, 'code').id;
     });
-  }
-  if (entities.indexOf('chairs') >= 0) {
-    yield odm.createMany('chair', localdb.chairs);
-    localdb.guests.forEach(guest => {
-      guest.chair_code = localdb.chairs.find(chair => (guest.code.substring(1, 5) == chair.code.substring(1, 5))).id;
+    yield store.createMany('chair', localdb.chair);
+  
+    // create guests
+    localdb.guest.forEach(function (guest) {
+      guest.table_ids = _filter(guest.table_ids, localdb.table, 'code').map(function (table) {
+        return table.id;
+      });
+      guest.chair_id = _find(guest.chair_id, localdb.chair, 'code').id;
     });
-  }
-  if (entities.indexOf('guests') >= 0) {
-    yield odm.createMany('guest', localdb.guests);
+    yield store.createMany('guest', localdb.guest);
+    
+    // create logs
+    localdb.log.forEach(function (log) {
+      var related = localdb[log.owner_type].find(function (item) {
+        return log.owner_id == item.code || log.owner_id == item.name;
+      });
+      log.owner_id = related.id || related.unique;
+    });
+    yield store.createMany('log', localdb.log);
   }
   return localdb;
 };
 
-describe('ODM configuration', function() {
+describe('\n\n ####### store configuration #######', function() {
   
-  it('initialize odm', function * () {
+  it('initialize store', function * () {
     
-    odm = new Container();
-    var adapter = new jsDataDatastore.DataStoreAdapter({config : config});
-    odm.registerAdapter('datastore', adapter, {'default' : true});
+    var adapter =  new MemoryAdapter();
+    store = new Container();
+    store.registerAdapter(config.name, adapter, config.registerOptions);
         
     // Register all schemas
-    Object.keys(schemas).forEach(schemaName => {
+    Object.keys(schemas).forEach(function (schemaName) {
       var configuration = {
         schema    : new Schema(schemas[schemaName].schema),
         relations : schemas[schemaName].relations
       };
-      odm.defineMapper(schemaName, configuration);
+      if (schemas[schemaName].idAttribute) configuration.idAttribute = schemas[schemaName].idAttribute;
+      store.defineMapper(schemaName, configuration);
     });
-    
-    yield clearDB();
+    assert.notEqual(store, false);
+    global.store = store;
   });
     
 }); 
 
-describe('Mapper functions', function() {
+describe('\n\n ####### Mapper Functions #######', function() {
 
   this.timeout(5000);
-
-  /**
-   * create
-   */
+  
+  // create
   describe('create', function () {
-    
+        
     var localdb;
     
-    before('create all entities', function * ()  {
-      localdb = yield createDB([]);
+    before('clear db', function * ()  {
+      localdb = yield _createDB(false);
     });
 
-    it('create table', function * () {
-      var tmp_table = JSON.parse(JSON.stringify(db.tables[0]));
-      var table = yield odm.create('table', tmp_table);
+    it('create 1 table', function * () {
+      var tmp_table = JSON.parse(JSON.stringify(localdb.table[0]));
+      var table = yield store.create('table', tmp_table);
       assert.notEqual(table.id, undefined);
     });
 
-    it('create table with hasMany[chair]', function * () {
-      var tmp_table = JSON.parse(JSON.stringify(db.tables[0]));
-      tmp_table.chairs = localdb.chairs.filter(chair => chair.code.substring(1, 3) == tmp_table.code.substring(1, 3));
-      var table = yield odm.create('table', tmp_table, {with : ['chairs']});
+    it('create 1 table with hasMany[chair][foreignKey]', function * () {
+      var tmp_table = JSON.parse(JSON.stringify(localdb.table[0]));
+      tmp_table.chairs = _filter(tmp_table.code, localdb.chair, 'table_id');
+      var table = yield store.create('table', tmp_table, {with : ['chairs']});
       assert.notEqual(table.id, undefined);
       assert.notEqual(table.chairs, undefined);
-      table.chairs.forEach(chair => assert.equal(chair.table_code, table.id));
+      assert.equal(table.chairs.length, _filter(db.table[0].code, db.chair, 'table_id').length);
+      table.chairs.forEach(function(chair) {
+        assert.notEqual(chair.id, undefined);
+        assert.equal(chair.table_id, table.id);
+      });
     });
     
-    it('create chair with hasOne[guest] relation', function * () {
-      var tmp_chair = JSON.parse(JSON.stringify(db.chairs[0]));
-      tmp_chair.guest = localdb.guests.find(guest => guest.code.substring(1, 5) == tmp_chair.code.substring(1, 5));
-      var chair = yield odm.create('chair', tmp_chair, {with : ['guest']});
+    it('create 1 chair with belongsTo[table] relation', function * () {
+      var tmp_chair = JSON.parse(JSON.stringify(localdb.chair[4]));
+      tmp_chair.table = _find(tmp_chair.table_id, localdb.table, 'code');
+      var chair = yield store.create('chair', tmp_chair, {with : ['table']});
       assert.notEqual(chair.id, undefined);
-      assert.notEqual(chair.guest.id, undefined);
-      assert.equal(chair.guest.chair_code, chair.id);
+      assert.notEqual(chair.table.id, undefined);
+      assert.equal(chair.table.id, chair.table_id);
     });
     
-    it('create chair with hasOne[guest] relation empty', function * () {
-      var tmp_chair = JSON.parse(JSON.stringify(db.chairs[5]));
-      tmp_chair.guest = localdb.guests.find(guest => guest.code.substring(1, 5) == tmp_chair.code.substring(1, 5));
-      var chair = yield odm.create('chair', tmp_chair, {with : ['guest']});
+    it('create 1 chair with hasOne[guest] relation', function * () {
+      var tmp_chair = JSON.parse(JSON.stringify(localdb.chair[0]));
+      tmp_chair.guest = _find(tmp_chair.code, localdb.guest, 'chair_id');
+      var chair = yield store.create('chair', tmp_chair, {with : ['guest']});
       assert.notEqual(chair.id, undefined);
-      assert.equal(chair.guest, undefined);
+      assert.notEqual(chair.guest.unique, undefined);
+      assert.equal(chair.guest.chair_id, chair.id);
+    });
+    
+    it('create 1 guest with belongsTo[chair] relation', function * () {
+      var tmp_guest = JSON.parse(JSON.stringify(localdb.guest[3]));
+      tmp_guest.chair = _find(tmp_guest.chair_id, localdb.chair, 'code');
+      var guest = yield store.create('guest', tmp_guest, {with : ['chair']});
+      assert.notEqual(guest.unique, undefined);
+      assert.notEqual(guest.chair.id, undefined);
+      assert.equal(guest.chair.id, guest.chair_id);
+    });
+    
+    it('create 1 guest with hasMany[table][localKeys] relation', function * () {
+      var tmp_guest = JSON.parse(JSON.stringify(localdb.guest[2]));
+      tmp_guest.tables = _filter(tmp_guest.table_ids, localdb.table, 'code');
+      var guest = yield store.create('guest', tmp_guest, {with : ['tables']});
+      assert.notEqual(guest.unique, undefined);
+      assert.notEqual(guest.tables, undefined);
+      assert.equal(guest.tables.length, _filter(db.guest[2].table_ids, db.table, 'code').length);
     });
 
   });
   
-  /**
-   * createMany
-   */
+  // createMany
   describe('createMany', function () {
     
     var localdb;
-    
+
     before('create all entities', function * ()  {
-      localdb = yield createDB([]);
+      localdb = yield _createDB(false);
     });
 
-    it('createMany tables', function * () {
-      var tmp_tables = localdb.tables.slice(0, localdb.tables.length);
-      var tables = yield odm.createMany('table', tmp_tables);
-      tables.forEach(table => assert.notEqual(table.id, undefined));
-      assert.equal(tables.length, localdb.tables.length);
-    });
-
-    xit('createMany tables with hasMany[chair]', function * () {
-      var tmp_tables = localdb.tables.slice(0, localdb.tables.length);
-      tmp_tables.forEach(table => {
-        table.chairs = localdb.chairs.filter(chair => chair.code.substring(1, 3) == table.code.substring(1, 3));
+    it('createMany table', function * () {
+      var tmp_tables = JSON.parse(JSON.stringify(localdb.table));
+      var tables = yield store.createMany('table', tmp_tables);
+      assert.equal(tables.length, db.table.length);
+      tables.forEach(function(table) {
+        assert.notEqual(table.id, undefined);
       });
-      var tables = yield odm.createMany('table', tmp_tables, {with : ['chairs']});
-      tables.forEach(table => {
+    });
+
+    it('createMany table with hasMany[chair][foreignKey]', function * () {
+      var tmp_tables = JSON.parse(JSON.stringify(localdb.table));
+      tmp_tables.forEach(function(tmp_table) {
+        tmp_table.chairs = _filter(tmp_table.code, localdb.chair, 'table_id');
+      });
+      var tables = yield store.createMany('table', tmp_tables, {with : ['chairs']});
+      tables.forEach(function(table) {
         assert.notEqual(table.id, undefined);
         assert.notEqual(table.chairs, undefined);
-        table.chairs.forEach(chair => assert.equal(chair.table_code, table.id));
+        assert.equal(table.chairs.length, _filter(table.code, db.chair, 'table_id').length);
       });
-      assert.equal(tables.length, localdb.tables.length);
     });
 
-    it('createMany chairs with hasOne[guest] relation', function * () {
-      var tmp_chairs = localdb.chairs.slice(0, localdb.chairs.length);
-      tmp_chairs.forEach(chair => {
-        chair.guest = localdb.guests.find(guest => guest.code.substring(1, 5) == chair.code.substring(1, 5));
+    it('createMany table with hasMany[guest][foreignKeyss]', function * () {
+      var tmp_tables = JSON.parse(JSON.stringify(localdb.table));
+      tmp_tables.forEach(function(tmp_table) {
+        tmp_table.guests = _filter(tmp_table.code, localdb.guest, 'table_ids');
       });
-      var chairs = yield odm.createMany('chair', tmp_chairs);
-      var guests_count = 0;
-      chairs.forEach(chair => {
+      var tables = yield store.createMany('table', tmp_tables, {with : ['guests']});
+      tables.forEach(function(table) {
+        assert.notEqual(table.id, undefined);
+        assert.notEqual(table.guests, undefined);
+        assert.equal(table.guests.length, _filter(table.code, db.guest, 'table_ids').length);
+      });
+    });
+    
+    it('createMany chair with belongsTo[table] relation', function * () {
+      var tmp_chairs = JSON.parse(JSON.stringify(localdb.chair));
+      tmp_chairs.forEach(function(tmp_chair) {
+        tmp_chair.table = _find(tmp_chair.table_id, localdb.table, 'code');
+      });
+      var chairs = yield store.createMany('chair', tmp_chairs, {with : ['table']});
+      chairs.forEach(function(chair) {
         assert.notEqual(chair.id, undefined);
-        if (chair.guest) guests_count++;
+        assert.notEqual(chair.table, undefined);
+        assert.equal(chair.table.id, chair.table_id);
       });
-      assert.equal(guests_count, localdb.guests.length)
-      assert.equal(chairs.length, localdb.chairs.length);
+    });
+    
+    it('createMany chair with hasOne[guest] relation', function * () {
+      var tmp_chairs = JSON.parse(JSON.stringify(localdb.chair));
+      tmp_chairs.forEach(function(tmp_chair) {
+        tmp_chair.guest = _find(tmp_chair.code, localdb.guest, 'chair_id');
+      });
+      var chairs = yield store.createMany('chair', tmp_chairs, {with : ['guest']});
+      chairs.forEach(function(chair) {
+        assert.notEqual(chair.id, undefined);
+        assert.equal(!!chair.guest, !!_find(chair.code, localdb.guest, 'chair_id'));
+      });
+    });
+    
+    it('createMany guest with belongsTo[chair] relation', function * () {
+      var tmp_guests = JSON.parse(JSON.stringify(localdb.guest));
+      tmp_guests.forEach(function(tmp_guest) {
+        tmp_guest.chair = _find(tmp_guest.chair_id, localdb.chair, 'code');
+      });
+      var guests = yield store.createMany('guest', tmp_guests, {with : ['chair']});
+      guests.forEach(function(guest) {
+        assert.notEqual(guest.unique, undefined);
+        assert.notEqual(guest.chair.id, undefined);
+        assert.equal(guest.chair.id, guest.chair_id);
+      });
+    });
+    
+    it('createMany guest with hasMany[table][localKeys] relation', function * () {
+      var tmp_guests = JSON.parse(JSON.stringify(localdb.guest));
+      tmp_guests.forEach(function(tmp_guest) {
+        tmp_guest.tables = _filter(tmp_guest.table_ids, localdb.table, 'code');
+      });
+      var guests = yield store.createMany('guest', tmp_guests, {with : ['tables']});
+      guests.forEach(function(guest) {
+        assert.notEqual(guest.unique, undefined);
+        assert.notEqual(guest.tables, undefined);
+        assert.equal(guest.tables.length, _find(guest.name, db.guest, 'name').table_ids.length);
+      });
     });
 
   });
-
-  /**
-   * find
-   */
+  
+  // find
   describe('find', function () {
     
     var localdb;
     
     before('create all entities', function * ()  {
-      localdb = yield createDB(['tables', 'chairs', 'guests']);
+      localdb = yield _createDB(true);
     });
 
-    it('find table', function * ()  {
-      var table = yield odm.find('table', localdb.tables[0].id);
+    it('find 1 table', function * ()  {
+      var table = yield store.find('table', localdb.table[0].id);
       assert.notEqual(table.id, undefined);
-      assert.equal(table.id, localdb.tables[0].id);
+      assert.equal(table.id, localdb.table[0].id);
     });
 
-    it('find table loading hasMany[chair] relation', function * ()  {
-      var table = yield odm.find('table', localdb.tables[0].id, {with : ['chairs']});
+    it('find 1 chair', function * ()  {
+      var chair = yield store.find('chair', localdb.chair[0].id);
+      assert.notEqual(chair.id, undefined);
+      assert.equal(chair.id, localdb.chair[0].id);
+    });
+
+    it('find 1 guest', function * ()  {
+      var guest = yield store.find('guest', localdb.guest[0].unique);
+      assert.notEqual(guest.unique, undefined);
+      assert.equal(guest.unique, localdb.guest[0].unique);
+    });
+
+    it('find table loading hasMany[chair][foreignKey] relation', function * ()  {
+      var table = yield store.find('table', localdb.table[0].id, {with : ['chairs']});
       assert.notEqual(table.id, undefined);
-      assert.equal(table.id, localdb.tables[0].id);
+      assert.equal(table.id, localdb.table[0].id);
       assert.notEqual(table.chairs, undefined);
-      assert.equal(table.chairs.length, localdb.chairs.filter(chair => chair.table_code == table.id).length);
-      table.chairs.forEach(chair => {
+      assert.equal(table.chairs.length, _filter(table.id, localdb.chair, 'table_id').length);
+      table.chairs.forEach(function(chair) {
         assert.notEqual(chair.id, undefined);
-        assert.equal(chair.table_code, table.id);
+        assert.equal(chair.table_id, table.id);
       });
     });
     
-    xit('find chair loading hasOne[guest] relation', function * () {
-      var chair = yield odm.find('chair', localdb.chairs[0].id, {with : ['guest']});
-      assert.notEqual(chair.id, undefined);
-      assert.equal(chair.id, localdb.chairs[0].id);
-      assert.notEqual(chair.guest, undefined);
-      assert.notEqual(chair.guest.id, undefined);
-      assert.equal(chair.guest.chair_code, chair.id);
-    });
-    
-    xit('find chair loading hasOne[guest] relation empty', function * () {
-      var chair = yield odm.find('chair', localdb.chairs[5].id, {with : ['guest']});
-      assert.notEqual(chair.id, undefined);
-      assert.equal(chair.id, localdb.chairs[5].id);
-      assert.equal(chair.guest, undefined);
-    });
-    
-    it('find guest loading belongsTo[chair] relation', function * () {
-      var guest = yield odm.find('guest', localdb.guests[0].id, {with : ['chair']});
-      assert.notEqual(guest.id, undefined);
-      assert.equal(guest.chair_code, localdb.chairs.find(chair => chair.code.substring(1,5) == guest.code.substring(1,5)).id);
-      assert.notEqual(guest.chair, undefined);
-      assert.equal(guest.chair.id, guest.chair_code);
-    });
-
-    xit('find table deep loading hasMany[chair] relation and [chair].hasOne[guest] relation', function * ()  {
-      var table = yield odm.find('table', localdb.tables[2].id, {with : ['chairs', 'chairs.guest']});
+    it('find table loading hasMany[guest][foreignKeys] and hasMany[log][polimorphic] relation', function * () {
+      var table = yield store.find('table', localdb.table[0].id, {with : ['guests', 'logs']});
       assert.notEqual(table.id, undefined);
-      assert.equal(table.id, localdb.tables[2].id);
-      assert.notEqual(table.chairs, undefined);
-      table.chairs.forEach(chair => {
-        assert.equal(chair.table_code, table.id);
-        assert.notEqual(chair.guest, undefined);
-        assert.equal(chair.id, chair.guest.chair_code);
+      assert.equal(table.id, localdb.table[0].id);
+      assert.notEqual(table.guests, undefined);
+      assert.equal(table.guests.length, _filter(table.id, localdb.guest, 'table_ids').length);
+      table.guests.forEach(function(guest) {
+        assert.notEqual(guest.unique, undefined);
+        assert.equal(guest.table_ids.indexOf(table.id) >= 0, true);
+      });
+      assert.notEqual(table.logs, undefined);
+      assert.equal(table.logs.length, _filter('table', _filter(table.id, localdb.log, 'owner_id'), 'owner_type').length);
+      table.logs.forEach(function(log) {
+        assert.notEqual(log.id, undefined);
+        assert.equal(log.owner_id, localdb.table[0].id);
+        assert.equal(log.owner_type, 'table');
       });
     });
     
-    xit('find chair loading hasOne[guest] relation and [guest].belongsTo[chair] relation', function * () {
-      var chair = yield odm.find('chair', localdb.chairs[0].id, {with : ['guest', 'guest.chair']});
+    it('find chair loading hasOne[guest] and belongsTo[table] relation', function * () {
+      var chair = yield store.find('chair', localdb.chair[3].id, {with : ['guest', 'table']});
       assert.notEqual(chair.id, undefined);
-      assert.equal(chair.id, localdb.chairs[0].id);
+      assert.equal(chair.id, localdb.chair[3].id);
       assert.notEqual(chair.guest, undefined);
-      assert.equal(chair.guest.chair_code, chair.id);
-      assert.notEqual(chair.guest.chair, undefined);
-      assert.equal(chair.guest.chair.id, localdb.chairs[0].id);
+      assert.notEqual(chair.table, undefined);
+      assert.equal(chair.guest.unique, _find(chair.guest.name, localdb.guest, 'name').unique);
+      assert.equal(chair.table.id, chair.table_id);
     });
     
-    it('find guest deep loading belongsTo[chair] relation and [chair].hasOne[table] relation', function * () {
-      var guest = yield odm.find('guest', localdb.guests[0].id, {with : ['chair', 'chair.table']});
-      assert.notEqual(guest.id, undefined);
-      assert.equal(guest.id, localdb.guests[0].id);
+    it('find guest loading belongsTo[chair] and hasMany[table][localKeys] relation', function * () {
+      var guest = yield store.find('guest', localdb.guest[0].unique, {with : ['chair', 'tables']});
+      assert.notEqual(guest.unique, undefined);
+      assert.equal(guest.chair_id, _find(localdb.guest[0].chair_id, localdb.chair, 'id').id);
+      assert.equal(guest.chair.id, guest.chair_id);
       assert.notEqual(guest.chair, undefined);
-      assert.notEqual(guest.chair.id, undefined);
-      assert.equal(guest.chair_code, guest.chair.id);
-      assert.notEqual(guest.chair.table, undefined);
-      assert.notEqual(guest.chair.table.id, undefined);
-      assert.equal(guest.chair.table.id, guest.chair.table_code);
+      assert.notEqual(guest.tables, undefined);
+      assert.equal(guest.tables.length, _filter(guest.table_ids, localdb.table, 'id').length);
+      guest.tables.forEach(function(table) {
+        assert.notEqual(table.id, undefined);
+      });
+    });
+    
+    it('find log loading belongsTo[table, chair, guest][polimorphic]', function * () {
+      var log = yield store.find('log', localdb.log[0].id, {with : ['owner']});
+      assert.notEqual(log.id, undefined);
+      assert.equal(log.id, localdb.log[0].id);
+      assert.notEqual(log.owner, undefined);
     });
 
   });
 
-  /**
-   * findAll
-   */
+  // findAll
   describe('findAll', function () {
     
     var localdb;
     
     before('create all entities', function * ()  {
-      localdb = yield createDB(['tables', 'chairs', 'guests']);
+      localdb = yield _createDB(true);
     });
 
-    it('findAll tables', function * ()  {
-      var tables = yield odm.findAll('table', {});
-      assert.equal(tables.length, localdb.tables.length);
-      tables.forEach(table => assert.notEqual(table.id, undefined));
-    });
-    
-    it('findAll tables with max_chairs > 5', function * ()  {
-      var tables = yield odm.findAll('table', {"max_chairs" : {">" : 5}});
-      assert.equal(tables.length, localdb.tables.filter(table => table.max_chairs > 5).length);
-      tables.forEach(table => assert.notEqual(table.id, undefined));
-    });
-    
-    it('findAll tables with max_chairs >= 5', function * ()  {
-      var tables = yield odm.findAll('table', {"max_chairs" : {">=" : 5}});
-      assert.equal(tables.length, localdb.tables.filter(table => table.max_chairs >= 5).length);
-      tables.forEach(table => assert.notEqual(table.id, undefined));
-    });
-    
-    it('findAll tables with max_chairs < 5', function * ()  {
-      var tables = yield odm.findAll('table', {"max_chairs" : {"<" : 5}});
-      assert.equal(tables.length, localdb.tables.filter(table => table.max_chairs < 5).length);
-      tables.forEach(table => assert.notEqual(table.id, undefined));
-    });
-    
-    it('findAll tables with max_chairs <= 5', function * ()  {
-      var tables = yield odm.findAll('table', {"max_chairs" : {"<=" : 5}});
-      assert.equal(tables.length, localdb.tables.filter(table => table.max_chairs <= 5).length);
-      tables.forEach(table => assert.notEqual(table.id, undefined));
-    });
-    
-    it('findAll tables with max_chairs == 5', function * ()  {
-      var tables = yield odm.findAll('table', {"max_chairs" : {"==" : 5}});
-      assert.equal(tables.length, localdb.tables.filter(table => table.max_chairs == 5).length);
-      tables.forEach(table => assert.notEqual(table.id, undefined));
-    });
-    
-    it('findAll tables with max_chairs === 6', function * ()  {
-      var tables = yield odm.findAll('table', {"max_chairs" : {"===" : 6}});
-      assert.equal(tables.length, localdb.tables.filter(table => table.max_chairs === 6).length);
-      tables.forEach(table => assert.notEqual(table.id, undefined));
-    });
-    
-    it('findAll guests with age in [30, 35]', function * ()  {
-      var guests = yield odm.findAll('guest', {"age" : {"in" : [30, 35]}});
-      assert.equal(guests.length, localdb.guests.filter(guest => [30, 35].indexOf(guest.age) >= 0).length);
-      guests.forEach(guest => assert.notEqual(guest.id, undefined));
-    });
-    
-    it('findAll guests with age in [30, 35] and role in [admin, manager]', function * ()  {
-      var guests = yield odm.findAll('guest', {"age" : {"in" : [30, 35]}, "role" : {"in" : ['admin', 'manager']}});
-      assert.equal(guests.length, localdb.guests.filter(guest => ([30, 35].indexOf(guest.age)+['admin', 'manager'].indexOf(guest.role)) >= 0).length);
-      guests.forEach(guest => assert.notEqual(guest.id, undefined));
+    it('findAll table with max_chairs > 4', function * ()  {
+      var tables = yield store.findAll('table', {
+        where: {
+          'max_chairs' : {'>' : 4}
+        }
+      });
+      assert.equal(tables.length, localdb.table.filter(function(table) {
+        return table.max_chairs > 4;
+      }).length);
     });
 
-    xit('findAll tables loading hasMany[chair] relation', function * ()  {
-      var tables = yield odm.findAll('table', {}, {with : ['chairs']});
-      assert.equal(tables.length, localdb.tables.length);
-      tables.forEach(table => {
-        assert.notEqual(table.chairs, undefined);
-        assert.equal(table.chairs.length, localdb.chairs.filter(chair => chair.table_code == table.id).length);
-        table.chairs.forEach(chair => {
-          assert.notEqual(chair.id, undefined);
-          assert.equal(chair.table_code, table.id);
-        });
+    it('findAll chair ', function * ()  {
+      var chairs = yield store.findAll('chair');
+      assert.equal(chairs.length, localdb.chair.length);
+    });
+
+    it('findAll guest with age between 30 and 35', function * ()  {
+      var guests = yield store.findAll('guest', {
+        where: {
+          'age' : {'>=' : 30, '<=' : 35}
+        }
+      });
+      assert.equal(guests.length, localdb.guest.filter(function(guest) {
+        return guest.age >= 30 && guest.age <= 35;
+      }).length);
+    });
+
+    it('findAll table where max_chairs = 3 loading hasMany[chair][foreignKey], hasMany[log][polimorphic] relation', function * ()  {
+      var tables = yield store.findAll('table', {
+        where: {
+          'max_chairs' : {'==' : 3}
+        }
+      }, {with : ['chairs', 'logs']});
+      assert.equal(tables.length, _filter(3, localdb.table, 'max_chairs').length);
+      tables.forEach(function(table) {
+        assert.equal(table.chairs.length, _filter(table.id, localdb.chair, 'table_id').length);
+        assert.equal(table.log.length, _filter('table', _filter(table.id, localdb.log, 'owner_id'), 'owner_type').length);
       });
     });
     
-    xit('findAll chairs loading hasOne[guest] relation', function * () {
-      var chairs = yield odm.findAll('chair', {}, {with : ['guest']});
-      assert.equal(chairs.length, localdb.chairs.length);
-      chairs.forEach(chair => {
-        assert.notEqual(chair.id, undefined);
-        assert.notEqual(chair.guest == undefined, localdb.guests.find(guest => guest.chair_code == chair.id) == undefined);
-        assert.equal(chair.guest.chair_code, chair.id);
-      });
+    it('findAll table where id > 1000 loading hasMany[guest][foreignKeys] and hasMany[log][foreignKey][custom_get] relation', function * () {
+      var table = yield store.findAll('table', {
+        where: {
+          'id' : {'>' : 1000}
+        }
+      }, {with : ['guests', 'logs']});
+      assert.equal(table.length, 0);
     });
     
-    xit('findAll guests loading belongsTo[chair] relation', function * () {
-      var guests = yield odm.findAll('guest', {}, {with : ['chair']});
-      assert.notEqual(guests.length, localdb.guests.length);
-      guests.forEach(guest => {
-        assert.equal(guest.chair_code, localdb.chairs.find(chair => chair.code.substring(1,5) == guest.code.substring(1,5)).id);
+    it('findAll guest where age in [29,30,31] loading belongsTo[chair] and hasMany[table][localKeys] relation', function * () {
+      var guests = yield store.findAll('guest', {
+        where : {
+          'age' : {'in' : [29,30,31]}
+        }
+      }, {with : ['chair', 'tables']});
+      assert.equal(guests.length, _filter([29,30,31], localdb.guest, 'age').length);
+      guests.forEach(function(guest) {
         assert.notEqual(guest.chair, undefined);
-        assert.equal(guest.chair.id, guest.chair_code);
+        assert.notEqual(guest.tables, undefined);
+      });
+    });
+    
+    it('findAll log where owner_type = chair loading belongsTo[table, chair, guest][polimorphic]', function * () {
+      var logs = yield store.findAll('log', {
+        where : {
+          'owner_type' : {'==' : 'chair'}
+        }
+      }, {with : ['owner']});
+      assert.equal(logs.length, _filter('chair', localdb.log, 'owner_type').length);
+      logs.forEach(function(log) {
+        assert.equal(log.owner_type, 'chair');
       });
     });
 
-    xit('findAll tables deep loading hasMany[chair] relation and [chair].hasOne[guest] relation', function * ()  {
-      var tables = yield odm.findAll('table', {}, {with : ['chairs', 'chairs.guest']});
-      tables.forEach(table => {
-        assert.notEqual(table.id, undefined);
-        assert.notEqual(table.chairs, undefined);
-        table.chairs.forEach(chair => {
-          assert.equal(chair.table_code, table.id);
-          assert.notEqual(chair.guest, undefined);
-          assert.equal(chair.id, chair.guest.chair_code);
-        });
-      });
-    });
-    
-    xit('findAll chairs loading hasOne[guest] relation and [guest].belongsTo[chair] relation', function * () {
-      var chairs = yield odm.findAll('chair', {}, {with : ['guest', 'guest.chair']});
-      assert.equal(chairs.length, localdb.chairs.length);
-      chairs.forEach(chair => {
-        assert.notEqual(chair.id, undefined);
-        assert.notEqual(chair.guest, undefined);
-        assert.equal(chair.guest.chair_code, chair.id);
-        assert.notEqual(chair.guest.chair, undefined);
-        assert.equal(chair.guest.chair.id, chair.id);
-      });
-    });
-    
-    xit('findAll guests deep loading belongsTo[chair] relation and [chair].hasOne[table] relation', function * () {
-      var guests = yield odm.findAll('guest', {}, {with : ['chair', 'chair.table']});
-      assert.equal(guests.length, localdb.guests.length);
-      guests.forEach(guest => {
-        assert.notEqual(guest.id, undefined);
-        assert.notEqual(guest.chair, undefined);
-        assert.notEqual(guest.chair.id, undefined);
-        assert.equal(guest.chair_code, guest.chair.id);
-        assert.notEqual(guest.chair.table, undefined);
-        assert.notEqual(guest.chair.table.id, undefined);
-        assert.equal(guest.chair.table.id, guest.chair.table_code);
-      });
-    });
   });
-  
-  /**
-   * destroy
-   */
+
+  // destroy
   describe('destroy', function () {
     
     var localdb;
     
     before('create all entities', function * ()  {
-      localdb = yield createDB(['tables']);
+      localdb = yield _createDB(true);
     });
 
     it('destroy table', function * () {
-      var result = yield odm.destroy('table', localdb.tables[0].id);
-      assert.equal(result, undefined);
+      var id_deleted = yield store.destroy('table', localdb.table[2].id);
+      var check      = yield store.findAll('table', {
+        where : {
+          'id' : {'==' : id_deleted}
+        }
+      });
+      assert.equal(check.length, 0);
     });
 
-    it('destroy unexisting table', function * () {
-      var result = yield odm.destroy('table', 123123);
-       assert.equal(result, undefined);
+    it('destroy guest', function * () {
+      var id_deleted = yield store.destroy('guest', localdb.guest[3].unique);
+      var check      = yield store.findAll('guest', {
+        where : {
+          'unique' : {'==' : id_deleted}
+        }
+      });
+      assert.equal(check.length, 0);
     });
 
   });
-    
-  /**
-   * destroyAll
-   */
-  describe('destroyAll', function () {
-    
+
+  // destroyAll
+  describe('destroyAll', function () {    
     var localdb;
     
     before('create all entities', function * ()  {
-      localdb = yield createDB(['tables', 'chairs', 'guests']);
+      localdb = yield _createDB(true);
     });
 
-    xit('destroyAll guests', function * () {
-      yield odm.destroyAll('guest');
-      var check = yield odm.destroyAll('guest');
-      assert(check.length, 0);
+    it('destroyAll chair', function * () {
+      yield store.destroyAll('chair');
+      var check = yield store.findAll('chair');
+      assert.equal(check.length, 0);
     });
     
-    xit('destroyAll all chairs related to not existing table', function * () {
-      yield odm.destroyAll('chair', {"table_code" : { "===" : 123123 }});
-      var check = yield odm.destroyAll('chair');
-      assert(check.length, localdb.chairs.length);
+    it('destroyAll table where max_chairs <= 5', function * () {
+      var where = {
+        where : {
+          'max_chairs' : {'<=' : 5}
+        }
+      };
+      yield store.destroyAll('table', where);
+      var check = yield store.findAll('table', where);
+      var check2 = yield store.findAll('table');
+      assert.equal(check.length, 0);
+      assert.equal(check2.length, localdb.table.filter(function (table) {
+        return table.max_chairs > 5;
+      }).length);
     });
     
-    xit('destroyAll chairs related to existing table', function * () {
-      yield odm.destroyAll('chair', {"table_code" : { "===" : localdb.tables[0].id }});
-      var check = yield odm.destroyAll('chair');
-      assert(check.length, localdb.chairs.filter(chair => chair.table_code != localdb.tables[0].id).length);
+    it('destroyAll guest related to table', function * () {
+      var where = {
+        where : {
+          "table_ids" :  {
+            "contains" : localdb.table[0].id 
+          }
+        }
+      }
+      yield store.destroyAll('guest', where);
+      var check = yield store.findAll('guest', where);
+      var check2 = yield store.findAll('guest');
+      assert.equal(check.length, 0);
+      assert.equal(check2.length, (localdb.guest.length - _filter(localdb.table[0].id, localdb.guest, 'table_ids').length));
     });
     
-    xit('destroyAll tables limit 1', function * () {
-      yield odm.destroyAll('chair', {limit : 1});
-      var check = yield odm.destroyAll('chair');
-      assert(check.length,(localdb.tables.length-1));
+    it('destroyAll log where owner_type in [chair, guest]', function * () {
+      var where = {
+        where : {
+          'owner_type' : {'in' : ['chair', 'guest']}
+        }
+      };
+      yield store.destroyAll('log', where);
+      var check = yield store.findAll('log', where);
+      var check2 = yield store.findAll('log');
+      assert.equal(check.length, 0);
+      assert.equal(check2.length, (localdb.log.length - _filter(['chair', 'guest'], localdb.log, 'owner_type').length));
     });
 
   });
   
-  /**
-   * update
-   */
+  // update
   describe('update', function () {
 
     var localdb;
     
     before('create all entities', function * ()  {
-      localdb = yield createDB(['chairs']);
+      localdb = yield _createDB(true);
     });
 
-    xit('update chair code', function * () {
-      var chair = yield odm.udpate('chair', localdb.chairs[0].id, {'code' : 'c0205'});
-      assert.equal(chair.id, localdb.chairs[0].id);
-      assert.notEqual(chair.code, localdb.chairs[0].code);
+    it('update 1 table', function * () {
+      var tmp_table = JSON.parse(JSON.stringify(localdb.table[0]));
+      var table = yield store.update('table', tmp_table.id, {code : 'new_code'});
+      assert.equal(table.id, tmp_table.id);
+      assert.equal(table.code, 'new_code');
+      assert.notEqual(table.code, localdb.table[0].code);
+      var check = yield store.find('table', tmp_table.id);
+      assert.equal(check.id, tmp_table.id);
+      assert.equal(check.code, 'new_code');
+      assert.notEqual(check.code, localdb.table[0].code);
     });
 
-    xit('update unexisting chair code', function * () {
-      var chair = yield odm.udpate('chair', 123123, {'code' : 'c0205'});
-      //TODO: check error
+    it('update 1 chair', function * () {
+      var tmp_chair = JSON.parse(JSON.stringify(localdb.chair[0]));
+      var chair = yield store.update('chair', tmp_chair.id, {table_id : ''});
+      assert.equal(chair.id, tmp_chair.id);
+      assert.equal(chair.table_id, '');
+      assert.notEqual(chair.table_id, localdb.chair[0].table_id);
+      var check = yield store.find('chair', tmp_chair.id);
+      assert.equal(check.id, tmp_chair.id);
+      assert.equal(check.table_id, '');
+      assert.notEqual(check.table_id, localdb.chair[0].table_id);
     });
 
+    it('update 1 guest', function * () {
+      var tmp_guest = JSON.parse(JSON.stringify(localdb.guest[1]));
+      var new_tables = localdb.table.map(function(item) {return item.id;});
+      var guest = yield store.update('guest', tmp_guest.unique, {table_ids : new_tables});
+      assert.equal(guest.unique, tmp_guest.unique);
+      assert.equal(guest.table_ids.length, new_tables.length);
+      assert.notEqual(guest.table_ids.length, localdb.guest[1].table_ids.length);
+      var check = yield store.find('guest', tmp_guest.unique, {with : ['tables']});
+      assert.equal(check.unique, tmp_guest.unique);
+      assert.equal(check.tables.length, localdb.table.length);
+      assert.notEqual(check.table_ids, localdb.guest[1].table_ids);
+    });
   });
   
-  /**
-   * updateMany
-   */
-  describe('updateMany', function () {
-
-    var localdb;
-    
-    before('create all entities', function * ()  {
-      localdb = yield createDB(['tables', 'chairs', 'guests']);
-    });
-
-    xit('updateMany chairs changing table_code', function * () {
-      var chairs = yield odm.udpateMany('chair', localdb.chairs.filter(chair => chair.table_code == localdb.tables[0].id), {'table_code' : '123123123'});
-      //TODO: check results
-    });
-
-    //TODO: add tests
-    
-  });
-  
-  /**
-   * updateAll
-   */
+  // updateAll
   describe('updateAll', function () {
 
     var localdb;
     
     before('create all entities', function * ()  {
-      localdb = yield createDB(['tables', 'chairs', 'guests']);
+      localdb = yield _createDB(true);
     });
 
-    //TODO: add tests
+    it('updateAll guest with age between 30 and 35', function * ()  {
+      var guests = yield store.updateAll('guest', {age : 20 }, {
+        where: {
+          'age' : {'>=' : 30, '<=' : 35}
+        }
+      });
+      assert.equal(guests.length, localdb.guest.filter(function(guest) {
+        return guest.age >= 30 && guest.age <= 35;
+      }).length);
+      guests.forEach(function (guest) {
+        assert.equal(guest.age, 20);
+      });
+    });
+
+    it('updateAll table where max_chairs in [3, 4, 5]', function * ()  {
+      var tables = yield store.updateAll('table', {max_chairs : 4}, {
+        where: {
+          'max_chairs' : {'in' : [3, 4, 5]}
+        }
+      });
+      assert.equal(tables.length, _filter([3,4,5], localdb.table, 'max_chairs').length);
+      tables.forEach(function(table) {
+        assert.equal(table.max_chairs, 4);
+      });
+    });
+    
+  });
+  
+  // updateMany
+  describe('updateMany', function () {
+
+    var localdb;
+    
+    before('create all entities', function * ()  {
+      localdb = yield _createDB(true);
+    });
+
+    it('updateMany table with max_chairs > 4', function * ()  {
+      var tables = yield store.findAll('table', {
+        where: {
+          'max_chairs' : {'>' : 4}
+        }
+      });
+      tables.forEach(function(table) {
+        table.max_chairs = 1;
+      });
+      var tables_updated = yield store.updateMany('table', tables, {});
+      var check = yield store.findAll('table', {
+        where: {
+          'max_chairs' : {'==' : 1}
+        }
+      });
+      assert.equal(check.length, localdb.table.filter(function(table) {
+        return table.max_chairs > 4 || table.max_chairs == 1;
+      }).length);
+    });
+    
+    it('updateMany guest where age in [29,30,31]', function * () {
+      var guests = yield store.findAll('guest', {
+        where : {
+          'age' : {'in' : [29,30,31]}
+        }
+      });
+      guests.forEach(function(guest) {
+        guest.age = 15;
+      });
+      var guests_updated = yield store.updateMany('guest', guests, {});
+      var check = yield store.findAll('guest', {
+        where : {
+          'age' : {'in' : [29,30,31]}
+        }
+      });
+      assert.equal(check.length, 0);
+    });
     
   });
 
 });
 
-describe('Record functions', function() {
-  
-  /**
-   * loadRelations
-   */
+describe('\n\n ####### Record functions #######', function() {  
+
+  // loadRelations
   describe('loadRelations', function () {
     
     var localdb;
     
     before('create all entities', function * ()  {
-      localdb = yield createDB(['tables', 'chairs', 'guests']);
+      localdb = yield _createDB(true);
     });
 
-    it('load table hasMany[chair] relation', function * () {
-      var table = yield odm.find('table', localdb.tables[0].id);
+    it('load table hasMany[chair][foreign_key], hasMany[guest][foreign_keys], hasMany[log][custom_get] relations', function * () {
+      var table = yield store.find('table', localdb.table[0].id);
       assert.notEqual(table.id, undefined);
-      assert.equal(table.id, localdb.tables[0].id);
-      yield table.loadRelations(['chairs']);
+      assert.equal(table.id, localdb.table[0].id);
+      yield table.loadRelations(['chairs', 'guests', 'logs']);
       assert.notEqual(table.chairs, undefined);
-      assert.equal(table.chairs.length, localdb.chairs.filter(chair => chair.table_code == table.id).length);
-      table.chairs.forEach(chair => {
-        assert.notEqual(chair.id, undefined);
-        assert.equal(chair.table_code, table.id);
-      });
+      assert.equal(table.chairs.length, _filter(table.id, localdb.chair, 'table_id').length);
+      assert.notEqual(table.guests, undefined);
+      assert.equal(table.guests.length, _filter(table.id, localdb.guest, 'table_ids').length);
+      assert.notEqual(table.logs, undefined);
+      assert.equal(table.logs.length, _filter('table', _filter(table.id, localdb.log, 'owner_id'), 'owner_type').length);
     });
-    
-    it('load chair hasOne[guest] relation', function * () {
-      var chair = yield odm.find('chair', localdb.chairs[0].id);
+
+    it('load chair belongsTo[table], hasOne[guest], hasMany[log][custom_get] relations', function * () {
+      var chair = yield store.find('chair', localdb.chair[0].id);
       assert.notEqual(chair.id, undefined);
-      assert.equal(chair.id, localdb.chairs[0].id);
-      yield chair.loadRelations(['guest']);
+      assert.equal(chair.id, localdb.chair[0].id);
+      yield chair.loadRelations(['table', 'guest', 'logs']);
+      assert.notEqual(chair.table, undefined);
+      assert.equal(chair.table.id, chair.table_id);
       assert.notEqual(chair.guest, undefined);
-      assert.notEqual(chair.guest.id, undefined);
-      assert.equal(chair.guest.chair_code, chair.id);
-    });
-    
-    it('load chair hasOne[guest] relation empty', function * () {
-      var chair = yield odm.find('chair', localdb.chairs[5].id);
-      assert.notEqual(chair.id, undefined);
-      assert.equal(chair.id, localdb.chairs[5].id);
-      yield chair.loadRelations(['guest']);
-      assert.equal(chair.guest, undefined);
+      assert.equal(chair.guest.chair_id, chair.id);
+      assert.notEqual(chair.logs, undefined);
+      assert.equal(chair.logs.length, _filter('chair', _filter(chair.id, localdb.log, 'owner_id'), 'owner_type').length);
     });
 
-    it('load guest belongsTo[chair] relation', function * () {
-      var guest = yield odm.find('guest', localdb.guests[0].id);
-      assert.notEqual(guest.id, undefined);
-      assert.equal(guest.chair_code, localdb.chairs.find(chair => chair.code.substring(1,5) == guest.code.substring(1,5)).id);
-      yield guest.loadRelations(['chair']);
+    it('load guest belongsTo[chair], hasMany[table][localKeys], hasMany[log][custom_get] relations', function * () {
+      var guest = yield store.find('guest', localdb.guest[3].unique);
+      assert.notEqual(guest.unique, undefined);
+      assert.equal(guest.unique, localdb.guest[3].unique);
+      yield guest.loadRelations(['tables', 'chair', 'logs']);
+      assert.notEqual(guest.tables, undefined);
+      assert.equal(guest.table_ids.length, guest.tables.length);
       assert.notEqual(guest.chair, undefined);
-      assert.equal(guest.chair.id, guest.chair_code);
+      assert.equal(guest.chair_id, guest.chair.id);
+      assert.notEqual(guest.logs, undefined);
+      assert.equal(guest.logs.length, _filter('guest', _filter(guest.unique, localdb.log, 'owner_id'), 'owner_type').length);
     });
 
-    xit('deep load table hasMany[chair] relation and [chair].hasOne[guest] relation', function * () {
-      var table = yield odm.find('table', localdb.tables[2].id);
+    it('load log belongsTo[guest][custom_load] relations', function * () {
+      var log = yield store.find('log', localdb.log[7].id);
+      assert.notEqual(log.id, undefined);
+      assert.equal(log.id, localdb.log[7].id);
+      yield log.loadRelations(['owner']);
+      assert.notEqual(log.owner, undefined);
+      assert.equal(log.owner_id, localdb.log[7].owner_id);
+      assert.equal(log.owner_type, localdb.log[7].owner_type);
+    });
+
+    it('load log belongsTo[chair][custom_load] relations', function * () {
+      var log = yield store.find('log', localdb.log[3].id);
+      assert.notEqual(log.id, undefined);
+      assert.equal(log.id, localdb.log[3].id);
+      yield log.loadRelations(['owner']);
+      assert.notEqual(log.owner, undefined);
+      assert.equal(log.owner_id, localdb.log[3].owner_id);
+      assert.equal(log.owner_type, localdb.log[3].owner_type);
+    });
+
+    it('load log belongsTo[table][custom_load] relations', function * () {
+      var log = yield store.find('log', localdb.log[1].id);
+      assert.notEqual(log.id, undefined);
+      assert.equal(log.id, localdb.log[1].id);
+      yield log.loadRelations(['owner']);
+      assert.notEqual(log.owner, undefined);
+      assert.equal(log.owner_id, localdb.log[1].owner_id);
+      assert.equal(log.owner_type, localdb.log[1].owner_type);
+    });
+
+  });
+
+  //destroy
+  
+  describe('destroy', function () {
+    var localdb;
+      
+    before('create all entities', function * ()  {
+      localdb = yield _createDB(true);
+    });
+
+    it('destroy 1 table', function * ()  {
+      var table = yield store.find('table', localdb.table[0].id);
       assert.notEqual(table.id, undefined);
-      assert.equal(table.id, localdb.tables[2].id);
-      yield table.loadRelations(['chairs', 'chairs.guest']);
-      assert.notEqual(table.chairs, undefined);
-      table.chairs.forEach(chair => {
-        assert.equal(chair.table_code, table.id);
-        assert.notEqual(chair.guest, undefined);
-        assert.equal(chair.id, chair.guest.chair_code);
-      });
+      assert.equal(table.id, localdb.table[0].id);
+      table.destroy();
+      var check = yield store.findAll('table', {id : {'==' : localdb.table[0].id}});
+      assert.equal(check.length, 0);
     });
-        
-    xit('deep load chair hasOne[guest] relation and [guest].belongsTo[chair] relation', function * () {
-      var chair = yield odm.find('chair', localdb.chairs[0].id);
+
+    it('destroy 1 chair', function * ()  {
+      var chair = yield store.find('chair', localdb.chair[0].id);
       assert.notEqual(chair.id, undefined);
-      assert.equal(chair.id, localdb.chairs[0].id);
-      yield chair.loadRelations(['guest', 'guest.chair']);
-      assert.notEqual(chair.guest, undefined);
-      assert.equal(chair.guest.chair_code, chair.id);
-      assert.notEqual(chair.guest.chair, undefined);
-      assert.equal(chair.guest.chair.id, localdb.chairs[0].id);
+      assert.equal(chair.id, localdb.chair[0].id);
+      chair.destroy();
+      var check = yield store.findAll('chair', {id : {'==' : localdb.chair[0].id}});
+      assert.equal(check.length, 0);
     });
-    
-    it('deep load guest belongsTo[chair] relation and [chair].hasOne[table] relation', function * () {
-      var guest = yield odm.find('guest', localdb.guests[0].id);
-      assert.notEqual(guest.id, undefined);
-      assert.equal(guest.id, localdb.guests[0].id);
-      yield guest.loadRelations(['chair', 'chair.table']);
-      assert.notEqual(guest.chair, undefined);
-      assert.notEqual(guest.chair.id, undefined);
-      assert.equal(guest.chair_code, guest.chair.id);
-      assert.notEqual(guest.chair.table, undefined);
-      assert.notEqual(guest.chair.table.id, undefined);
-      assert.equal(guest.chair.table.id, guest.chair.table_code);
+
+    it('destroy 1 guest', function * ()  {
+      var guest = yield store.find('guest', localdb.guest[0].unique);
+      assert.notEqual(guest.unique, undefined);
+      assert.equal(guest.unique, localdb.guest[0].unique);
+      guest.destroy();
+      var check = yield store.findAll('guest', {unique : {'==' : localdb.guest[0].unique}});
+      assert.equal(check.length, 0);
+    });
+
+    it('destroy 1 log', function * ()  {
+      var log = yield store.find('log', localdb.log[0].id);
+      assert.notEqual(log.id, undefined);
+      assert.equal(log.id, localdb.log[0].id);
+      log.destroy();
+      var check = yield store.findAll('log', {id : {'==' : localdb.log[0].id}});
+      assert.equal(check.length, 0);
     });
     
   });
-
 });
