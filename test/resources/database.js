@@ -1,5 +1,5 @@
 module.exports = {
-  tables : [
+  table : [
     {
       code        : 't01',
       max_chairs  : 5
@@ -8,82 +8,91 @@ module.exports = {
       max_chairs  : 6
     },{
       code        : 't03',
-      max_chairs  : 2
+      max_chairs  : 3
     }
   ],
-  chairs : [
+  chair : [
     {
-      code        : 'c0101',
-      table_code  : undefined
+      code     : 'c01',
+      table_id : 't01'
     },{
-      code        : 'c0102',
-      table_code  : undefined
+      code     : 'c02',
+      table_id : 't01'
     },{
-      code        : 'c0201',
-      table_code  : undefined
+      code     : 'c03',
+      table_id : 't01'
     },{
-      code        : 'c0202',
-      table_code  : undefined
+      code     : 'c04',
+      table_id : 't02'
     },{
-      code        : 'c0203',
-      table_code  : undefined
-    },{
-      code        : 'c0204',
-      table_code  : undefined
-    },{
-      code        : 'c0301',
-      table_code  : undefined
-    },{
-      code        : 'c0302',
-      table_code  : undefined
-    },{
-      code        : 'c0303',
-      table_code  : undefined
+      code     : 'c05',
+      table_id : 't02'
     }
   ],
-  guests : [
+  guest : [
     {
-      name        : 'Mark',
-      code        : 'g010101',
-      age         : 25,
-      role        : 'developer',
-      chair_code  : undefined
+      name          : 'guest1',
+      age           : 30,
+      table_ids     : ['t01', 't02', 't03'],
+      chair_id      : 'c01',
+      lucky_numbers : [1]
     },{
-      name        : 'Ronald',
-      code        : 'g010202',
-      age         : 30,
-      role        : 'manager',
-      chair_code  : undefined
+      name          : 'guest2',
+      age           : 30,
+      table_ids     : ['t01'],
+      chair_id      : 'c02',
+      lucky_numbers : [2, 3, 4]
     },{
-      name        : 'Marco',
-      code        : 'g020103',
-      age         : 30,
-      role        : 'developer',
-      chair_code  : undefined
+      name          : 'guest3',
+      age           : 25,
+      table_ids     : ['t01', 't02'],
+      chair_id      : 'c03',
+      lucky_numbers : [1, 4, 5]
     },{
-      name        : 'Robin',
-      code        : 'g020204',
-      age         : 22,
-      role        : 'developer',
-      chair_code  : undefined
+      name          : 'guest4',
+      age           : 35,
+      table_ids     : ['t02', 't03'],
+      chair_id      : 'c04',
+      lucky_numbers : [1, 2]
+    }
+  ],
+  log : [
+    {
+      time       : new Date().getTime(),
+      owner_id   : 't01',
+      owner_type : 'table'
     },{
-      name        : 'Dariusz',
-      code        : 'g020305',
-      age         : 35,
-      role        : 'manager',
-      chair_code  : undefined
+      time       : new Date().getTime() - (50*60*1000),
+      owner_id   : 't01',
+      owner_type : 'table'
     },{
-      name        : 'G01aby',
-      code        : 'g030206',
-      age         : 40,
-      role        : 'admin',
-      chair_code  : undefined
+      time       : new Date().getTime() - (50*60*1000),
+      owner_id   : 't03',
+      owner_type : 'table'
     },{
-      name        : 'Rene',
-      code        : 'g030307',
-      age         : 42,
-      role        : 'admin',
-      chair_code  : undefined
+      time       : new Date().getTime() - (50*60*1000),
+      owner_id   : 'c01',
+      owner_type : 'chair'
+    },{
+      time       : new Date().getTime() - (50*60*1000),
+      owner_id   : 'c02',
+      owner_type : 'chair'
+    },{
+      time       : new Date().getTime() - (50*60*1000),
+      owner_id   : 'c03',
+      owner_type : 'chair'
+    },{
+      time       : new Date().getTime() - (50*60*1000),
+      owner_id   : 'guest2',
+      owner_type : 'guest'
+    },{
+      time       : new Date().getTime() - (50*60*1000),
+      owner_id   : 'guest2',
+      owner_type : 'guest'
+    },{
+      time       : new Date().getTime() - (50*60*1000),
+      owner_id   : 'guest4',
+      owner_type : 'guest'
     }
   ]
 };

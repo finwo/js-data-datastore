@@ -2,24 +2,42 @@ module.exports = {
   table : {
     schema: {
       title           : 'table',
-      description     : 'Default schema for table entities',
       type            : 'object',
       properties      : {
-        code       : {
-          type        : 'string',
-          description : 'Unique code of table'
-        },
-        max_chairs : {
-          type        : 'integer',
-          description : 'max number of chairs'
-        }
+        id         : { type : 'string' },
+        code       : { type : 'string' },
+        max_chairs : { type : 'integer' }
       }
     },
     relations : {
       hasMany : {
         chair : {
           localField : 'chairs',
-          foreignKey : 'table_code'
+          foreignKey : 'table_id'
+        },
+        guest : {
+          localField : 'guests',
+          foreignKeys: 'table_ids'
+        },
+        log : {
+          localField : 'logs',
+          foreignKey : 'owner_id',
+          load       : function (Table, relationDef, table, options) {
+            return store.findAll('log', {
+              where : {
+                owner_id   : {'==' : table.id},
+                owner_type : {'==' : 'table'}
+              }
+            });
+          },
+          get        : function (Table, relationDef, table, origGetter) {
+            return store.findAll('log', {
+              where : {
+                owner_id   : {'==' : table.id},
+                owner_type : {'==' : 'table'}
+              }
+            });
+          }
         }
       }
     }
@@ -27,30 +45,46 @@ module.exports = {
   chair : {
     schema: {
       title           : 'chair',
-      description     : 'Default schema for chair entities',
       type            : 'object',
       properties      : {
-        code       : {
-          type        : 'string',
-          description : 'Unique code of chair'
-        },
-        table_code : {
-          type        : 'string',
-          description : 'id of table'
-        }
+        id       : { type : 'string' },
+        code     : { type : 'string' },
+        table_id : { type : 'string' },
       }
     },
     relations : {
       belongsTo : {
         table : {
           localField : 'table',
-          foreignKey : 'table_code'
+          foreignKey : 'table_id'
         }
       },
       hasOne : {
         guest : {
           localField : 'guest',
-          foreignKey : 'chair_code'
+          foreignKey : 'chair_id'
+        }
+      },
+      hasMany : {
+        log : {
+          localField : 'logs',
+          foreignKey : 'owner_id',
+          load       : function (Chair, relationDef, chair, options) {
+            return store.findAll('log', {
+              where : {
+                owner_id   : {'==' : chair.id},
+                owner_type : {'==' : 'chair'}
+              }
+            });
+          },
+          get        : function (Chair, relationDef, chair, origGetter) {
+            return store.findAll('log', {
+              where : {
+                owner_id   : {'==' : chair.id},
+                owner_type : {'==' : 'chair'}
+              }
+            });
+          }
         }
       }
     }
@@ -58,28 +92,19 @@ module.exports = {
   guest : {
     schema: {
       title           : 'guest',
-      description     : 'Default schema for guest entities',
       type            : 'object',
       properties      : {
-        name       : {
-          type        : 'string',
-          description : 'Name of guest'
+        unique        : { type : 'string' },
+        name          : { type : 'string' },
+        age           : { type : 'integer' },
+        chair_id      : { type : 'string' },
+        table_ids  : { 
+          type : 'array', 
+          items : { type : 'string' }
         },
-        code       : {
-          type        : 'string',
-          description : 'Unique code of guest'
-        },
-        age        : {
-          type        : 'number',
-          description : 'age of guest'
-        },
-        role       : {
-          type        : 'string',
-          description : 'role of guest'
-        },
-        chair_code : {
-          type        : 'string',
-          description : 'id of chair'
+        lucky_numbers : { 
+          type : 'array', 
+          items : { type : 'integer' }
         }
       }
     },
@@ -87,9 +112,67 @@ module.exports = {
       belongsTo : {
         chair : {
           localField : 'chair',
-          foreignKey   : 'chair_code'
+          foreignKey : 'chair_id'
+        }
+      },
+      hasMany : {
+        table : {
+          localField : 'tables',
+          localKeys  : 'table_ids'
+        },
+        log : {
+          localField : 'logs',
+          foreignKey : 'owner_id',
+          load       : function (Guest, relationDef, guest, options) {
+            return store.findAll('log', {
+              where : {
+                owner_id   : {'==' : guest.unique},
+                owner_type : {'==' : 'guest'}
+              }
+            });
+          },
+          get        : function (Guest, relationDef, guest, origGetter) {
+            return store.findAll('log', {
+              where : {
+                owner_id   : {'==' : guest.unique},
+                owner_type : {'==' : 'guest'}
+              }
+            });
+          }
+        }
+      }
+    },
+    idAttribute     : 'unique',
+    idType          : 'string',
+  },
+  log   : {
+    schema: {
+      title           : 'log',
+      type            : 'object',
+      properties      : {
+        id         : { type : 'string' },
+        time       : { type : 'integer' },
+        owner_type : { type : 'string' },
+        owner_id   : { type : 'string' }
+      }
+    },
+    relations : {
+      belongsTo : {
+        owner : {
+          localField : 'owner',
+          foreignKey : 'owner_id',
+          load       : function (Log, relationDef, log, options) {
+            return store.find(log.owner_type, log.owner_id);
+          },
+          get        : function (Log, relationDef, log, origGetter) {
+            return store.find(log.owner_type, log.owner_id);
+          }
         }
       }
     }
+  },
+  owner : {
+    schema : {},
+    relations : {}
   }
 };
