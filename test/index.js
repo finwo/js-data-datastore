@@ -1,17 +1,26 @@
 // Defining vars
 
-var path          = require('path'),
-    co            = require('co'),
-    jsdata        = require('js-data'),
-    Container     = jsdata.Container,
-    Schema        = jsdata.Schema,
-    MemoryAdapter = require(path.join('..', 'js-data-memory.js')),
-    assert        = require('assert'),
-    db            = require(path.join(__dirname, 'resources', 'database.js')),
-    schemas       = require(path.join(__dirname, 'resources', 'schemas.js')),
-    config        = {
-      adapter         : 'js-data-memory',
-      name            : 'memory',
+var path             = require('path'),
+    co               = require('co'),
+    jsdata           = require('js-data'),
+    Container        = jsdata.Container,
+    Schema           = jsdata.Schema,
+    DatastoreAdapter = require(path.join('..', 'index.js')),
+    assert           = require('assert'),
+    db               = require(path.join(__dirname, 'resources', 'database.js')),
+    schemas          = require(path.join(__dirname, 'resources', 'schemas.js')),
+    config           = {
+      internalName    : 'DataStoreAdapter',
+      name            : 'datastore',
+      options         : {
+        config : {
+          projectId   : 'trackthis-179709',
+          namespace   : 'test',
+          keyFilename : 'client-secret.json',
+          apiEndpoint : 'http://localhost:8081',
+          port        : 8081
+        }
+      },
       registerOptions : {
         'default' : true
       }
@@ -92,9 +101,9 @@ describe('\n\n ####### store configuration #######', function() {
   
   it('initialize store', function * () {
     
-    var adapter =  new MemoryAdapter();
+    var Adapter =  DatastoreAdapter[config.internalName];
     store = new Container();
-    store.registerAdapter(config.name, adapter, config.registerOptions);
+    store.registerAdapter(config.name, new Adapter(config.options), config.registerOptions);
         
     // Register all schemas
     Object.keys(schemas).forEach(function (schemaName) {
