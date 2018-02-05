@@ -16,12 +16,12 @@ var slicedToArray = function () {
     var _e   = undefined;
 
     try {
-      for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) {
+      for ( var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true ) {
         _arr.push(_s.value);
 
         if ( i && _arr.length === i ) break;
       }
-    } catch (err) {
+    } catch ( err ) {
       _d = true;
       _e = err;
     } finally {
@@ -79,17 +79,45 @@ var OPERATORS = {
   }
 };
 
+var unique = function unique(array) {
+  var seen  = {};
+  var final = [];
+  array.forEach(function (item) {
+    if ( item in seen ) {
+      return;
+    }
+    final.push(item);
+    seen[item] = 0;
+  });
+  return final;
+};
+
+var defineProperty = function (obj, key, value) {
+  if ( key in obj ) {
+    Object.defineProperty(obj, key, {
+      value        : value,
+      enumerable   : true,
+      configurable : true,
+      writable     : true
+    });
+  } else {
+    obj[key] = value;
+  }
+
+  return obj;
+};
+
 
 function DataStoreAdapter(options) {
 
   if ( 'undefined' === typeof options ||
-    'undefined' === typeof options.config ||
-    'undefined' === typeof options.config.projectId ||
-    'undefined' === typeof options.config.namespace ||
-    'undefined' === typeof options.config.keyFilename
+       'undefined' === typeof options.config ||
+       'undefined' === typeof options.config.projectId ||
+       'undefined' === typeof options.config.namespace ||
+       'undefined' === typeof options.config.keyFilename
   ) {
     // TODO EMIT ERROR MISSING OPTIONS
-    console.error('TODO EMIT ERROR MISSING OPTIONS');
+    // console.error('TODO EMIT ERROR MISSING OPTIONS');
     return false;
   }
 
@@ -103,7 +131,6 @@ function DataStoreAdapter(options) {
 jsDataAdapter.Adapter.extend({
 
   constructor : DataStoreAdapter,
-
 
   /**
    * Apply the specified selection query to the provided Datastore query.
@@ -201,7 +228,8 @@ jsDataAdapter.Adapter.extend({
 
     return dsQuery;
   },
-  _count      : function _count(mapper, query, opts) {
+
+  _count : function _count(mapper, query, opts) {
     var _this2 = this;
 
     opts || (opts = {});
@@ -248,7 +276,6 @@ jsDataAdapter.Adapter.extend({
           // Allocate ids
           _this3.datastore.allocateIds(incompleteKey, records.length, function (err, keys) {
             if ( err ) {
-              console.error(err);
               return reject(err);
             }
             var entities = records.map(function (_record, i) {
@@ -261,15 +288,13 @@ jsDataAdapter.Adapter.extend({
             // Save records
             _this3.datastore.save(entities, function (err, _apiResponse) {
               if ( err ) {
-                console.error(err);
                 return reject(err);
               }
               return resolve([singular ? records[0] : records, _apiResponse]);
             });
           });
 
-        } catch (e) {
-          console.error(e);
+        } catch ( e ) {
           return reject(e);
         }
       });
@@ -347,7 +372,7 @@ jsDataAdapter.Adapter.extend({
       try {
         var dsQuery = _this5.datastore.createQuery(_this5.getKind(mapper, opts));
         dsQuery     = _this5.filterQuery(dsQuery, query, opts);
-        dsQuery = dsQuery.select('__key__');
+        dsQuery     = dsQuery.select('__key__');
         _this5.datastore.runQuery(dsQuery, function (err, entities) {
           if ( err ) {
             return reject(err);
@@ -362,7 +387,7 @@ jsDataAdapter.Adapter.extend({
             resolve([undefined, apiResponse]);
           });
         });
-      } catch (e) {
+      } catch ( e ) {
         return reject(e);
       }
     });
@@ -401,56 +426,94 @@ jsDataAdapter.Adapter.extend({
 
   /**
    * detect Operators non provided by datastore and create eventually multiple queries to be run
-   * 
+   *
    * @param   {object}    query to check and explode
    * @return  {object[]}  array of queries to be run
    */
-  compileFetchQueries: function compileFetchQueries(query) {
-    var _this = this,
-        where, 
-        output = [];
-    if (query.where)          where = query.where;
-    else                      where = query;
+  compileFetchQueries : function compileFetchQueries(query) {
+    var where,
+        _this   = this,
+        output  = [],
+        filters = [],
+        queries = [];
+    if ( query.where ) where = query.where;
+    else where = query;
     Object.keys(where).map(function (property) {
       // explode 'in' operator
-      if (where[property]['in']) {
+      if ( where[property]['in'] ) {
         output = where[property]['in'].map(function (value) {
           var _new = JSON.parse(JSON.stringify(query)),
               _where;
-          if (_new.where) _where = _new.where;
-          else            _where = _new;
+          if ( _new.where ) _where = _new.where;
+          else _where = _new;
           delete _where[property]['in'];
           _where[property] = {'==' : value};
           return _new;
         });
+      } else if ( where[property]['contains'] ) {
+        // var _new = JSON.parse(JSON.stringify(query)),
+        //     _where;
+        // if (_new.where) _where = _new.where;
+        // else            _where = _new;
+        // delete _where[property];
+        filters[property] = {
+          contains : where[property]['contains']
+        };
+        delete where[property];
       }
     });
-    if (output.length) {
+    if ( output.length ) {
       //merge all results
-      var _q = [];
       output.map(function (_query) {
         // call recursively itself to explode queries obtained
-        _q = _q.concat(_this.compileFetchQueries(_query));
+        var _q  = _this.compileFetchQueries(_query);
+        queries = queries.concat(_q.queries);
+        // filters = filters.concat(_q.filter(function (filter) {
+        //   if (filters.indexOf(filter))
+        // }));
+        filters = filters.concat(_q.filters);
       });
-      return _q;
     } else {
-      return [query];
+      queries.push(query);
     }
+    return {
+      queries : queries,
+      filters : filters
+    };
   },
 
   /**
    * Managare filters not provided by datastore and apply options like sort if more db queries were made
-   * 
+   *
    * @param   {object[]}    queries   queries ran by datastore
    * @param   {record[]}    results   results provided by queries
    * @return  {record[][]}            array containing in first item all the results filtered
    */
-  compileFilterQueries: function compileFilterQueries(queries, results) {
-    // more then 1 query, need to sort results
-    if (queries.length > 1) {
+  compileFilterQueries : function compileFilterQueries(queries, filters, results) {
+    if ( Object.keys(filters).length > 0 ) {
+      results = results.filter(function (result) {
+        var condition = true;
+        Object.keys(filters).forEach(function (field) {
+          result[field] = result[field] || '';
+          var filter    = Object.keys(filters[field])[0];
+          switch ( filter ) {
+            case 'contains' :
+              if ( !Array.isArray(result[field]) ) {
+                condition = false;
+              } else {
+                condition = result[field].indexOf(filters[field][filter]) >= 0;
+              }
+              break;
+            default :
+              break;
+          }
+        });
+        return condition;
+      })
+    }
+    if ( queries.length > 1 ) {
       // TODO: sorting
     }
-    // TODO: detect filters like 'notIn', '!='
     return [results];
   },
 
@@ -471,8 +534,10 @@ jsDataAdapter.Adapter.extend({
     var meta   = {};
 
     // explode query syntax for unsupported operators (like 'in')
-    var queries = _this7.compileFetchQueries(query),
-        p = [];
+    var fetchedQueries = _this7.compileFetchQueries(query),
+        p              = [];
+    var queries        = fetchedQueries.queries,
+        filters        = fetchedQueries.filters;
     queries.forEach(function (_query) {
       // all queryies are executed
       var dsQuery = _this7.datastore.createQuery(_this7.getKind(mapper, opts));
@@ -485,21 +550,26 @@ jsDataAdapter.Adapter.extend({
       }));
     });
     return jsData.utils.Promise.all(p)
-    .then(function (res) {
-      //all results are merged togheter
-      var entities = [];
-      res.map(function(result) {
-        result.map(function(entity) {
-          var found = entities.find(function(_entity) { return _entity.id === entity.id;});
-          if (!found) entities.push(entity);
+      .then(function (res) {
+        //all results are merged togheter
+        var entities = [];
+        res.map(function (result) {
+          result.map(function (entity) {
+            var found = entities.find(function (_entity) {
+              return _entity[mapper.idAttribute] === entity[mapper.idAttribute];
+            });
+            if ( !found ) entities.push(entity);
+          });
         });
+        return entities;
+      })
+      .then(function (res) {
+        // all results are sorted and filtered if necessary
+        return _this7.compileFilterQueries(queries, filters, res);
+      })
+      .then(function (res) {
+        return res;
       });
-      return entities;
-    })
-    .then(function (res) {
-      // all results are sorted and filtered if necessary
-      return _this7.compileFilterQueries(queries, res);
-    });
   },
 
   _sum : function _sum(mapper, field, query, opts) {
@@ -682,33 +752,303 @@ jsDataAdapter.Adapter.extend({
     });
   },
 
+  /**
+   * load BelongsTo standard relations (foreignKey)
+   *
+   * @param {*} mapper
+   * @param {*} def
+   * @param {*} records
+   * @param {*} ___opts
+   */
   loadBelongsTo : function loadBelongsTo(mapper, def, records, __opts) {
+    var _this6   = this,
+        singular = false;
+
     if ( jsData.utils.isObject(records) && !jsData.utils.isArray(records) ) {
-      return __super__.loadBelongsTo.call(this, mapper, def, records, __opts);
+      singular = true;
+      records  = [records];
     }
-    throw new Error('findAll with belongsTo not supported!');
+
+    //check for custom relation functions
+    if ( mapper.relations[def.type][def.relation].get ) {
+
+      var p = [];
+      records.forEach(function (record) {
+        p.push(mapper.relations[def.type][def.relation].get({}, {}, record, {})
+          .then(function (relatedItems) {
+            def.setLocalField(record, relatedItems);
+          })
+        );
+      });
+      return Promise.all(p);
+
+    } else {
+
+      var relationDef = def.getRelation();
+
+      if ( singular ) {
+        var record = records[0];
+        return this.find(relationDef, this.makeBelongsToForeignKey(mapper, def, record), __opts).then(function (relatedItem) {
+          def.setLocalField(record, relatedItem);
+        });
+      } else {
+        var keys = [];
+        records.forEach(function (record) {
+          var key = _this6.makeBelongsToForeignKey(mapper, def, record);
+          if ( keys.indexOf(key) < 0 ) keys.push(key);
+        });
+
+        var where = {};
+        if ( keys.length > 1 ) where[relationDef.idAttribute] = {'in' : keys};
+        else where[relationDef.idAttribute] = {'==' : keys.shift()};
+        return this.findAll(relationDef, {where : where}, __opts).then(function (relatedItems) {
+          records.forEach(function (record) {
+            relatedItems.forEach(function (relatedItem) {
+              if ( relatedItem[relationDef.idAttribute] === record[def.foreignKey] ) {
+                def.setLocalField(record, relatedItem);
+              }
+            });
+          });
+        });
+      }
+    }
   },
 
+  /**
+   * load HasMany standard relation (foreignKey)
+   *
+   * @param {*} mapper
+   * @param {*} def
+   * @param {*} records
+   * @param {*} ___opts
+   */
   loadHasMany : function loadHasMany(mapper, def, records, __opts) {
+    var _this10  = this,
+        singular = false;
+
     if ( jsData.utils.isObject(records) && !jsData.utils.isArray(records) ) {
-      return __super__.loadHasMany.call(this, mapper, def, records, __opts);
+      singular = true;
+      records  = [records];
     }
-    throw new Error('findAll with hasMany not supported!');
+    if ( mapper.relations[def.type][def.relation].get ) {
+
+      var p = [];
+      records.forEach(function (record) {
+        p.push(mapper.relations[def.type][def.relation].get({}, {}, record, {})
+          .then(function (relatedItems) {
+            def.setLocalField(record, relatedItems);
+          })
+        );
+      });
+      return Promise.all(p);
+
+    } else {
+      var IDs      = records.map(function (record) {
+        return _this10.makeHasManyForeignKey(mapper, def, record);
+      });
+      var query    = {
+        where : {}
+      };
+      var criteria = query.where[def.foreignKey] = {};
+      if ( singular ) {
+        // more efficient query when we only have one record
+        criteria['=='] = IDs[0];
+      } else {
+        criteria['in'] = IDs.filter(function (id) {
+          return id;
+        });
+      }
+      return this.findAll(def.getRelation(), query, __opts).then(function (relatedItems) {
+        records.forEach(function (record) {
+          var attached = [];
+          // avoid unneccesary iteration when we only have one record
+          if ( singular ) {
+            attached = relatedItems;
+          } else {
+            relatedItems.forEach(function (relatedItem) {
+              if ( jsData.utils.get(relatedItem, def.foreignKey) === record[mapper.idAttribute] ) {
+                attached.push(relatedItem);
+              }
+            });
+          }
+          def.setLocalField(record, attached);
+        });
+      });
+    }
   },
 
+  /**
+   * load HasMany relation made by LocalKeys
+   *
+   * @param {*} mapper
+   * @param {*} def
+   * @param {*} records
+   * @param {*} ___opts
+   */
+  loadHasManyLocalKeys : function loadHasManyLocalKeys(mapper, def, records, __opts) {
+    var _this11       = this;
+    var record        = void 0;
+    var relatedMapper = def.getRelation();
+
+    if ( jsData.utils.isObject(records) && !jsData.utils.isArray(records) ) {
+      record = records;
+    }
+
+    if ( record ) {
+      return _this11.findAll(relatedMapper, {
+        where : defineProperty({}, relatedMapper.idAttribute, {
+          'in' : _this11.makeHasManyLocalKeys(mapper, def, record)
+        })
+      }, __opts).then(function (relatedItems) {
+        def.setLocalField(record, relatedItems);
+      });
+    } else {
+      var localKeys = [];
+      records.forEach(function (record) {
+        localKeys = localKeys.concat(_this11.makeHasManyLocalKeys(mapper, def, record));
+      });
+      return _this11.findAll(relatedMapper, {
+          where : defineProperty({}, relatedMapper.idAttribute, {
+            'in' : unique(localKeys).filter(function (x) {
+              return x;
+            })
+          })
+        }, __opts)
+        .then(function (relatedItems) {
+          records.forEach(function (item) {
+            var attached = [];
+            var itemKeys = jsData.utils.get(item, def.localKeys) || [];
+            itemKeys     = jsData.utils.isArray(itemKeys) ? itemKeys : Object.keys(itemKeys);
+            relatedItems.forEach(function (relatedItem) {
+              if ( itemKeys && itemKeys.indexOf(relatedItem[relatedMapper.idAttribute]) !== -1 ) {
+                attached.push(relatedItem);
+              }
+            });
+            def.setLocalField(item, attached);
+          });
+          return relatedItems;
+        });
+    }
+  },
+
+  /**
+   * load HasMany relation made by ForeignKeys
+   *
+   * @param {*} mapper
+   * @param {*} def
+   * @param {*} records
+   * @param {*} ___opts
+   */
+  loadHasManyForeignKeys : function loadHasManyForeignKeys(mapper, def, records, __opts) {
+    var _this12 = this;
+
+    var relatedMapper = def.getRelation();
+    var idAttribute   = mapper.idAttribute;
+    var record        = void 0;
+
+    if ( jsData.utils.isObject(records) && !jsData.utils.isArray(records) ) {
+      record = records;
+    }
+
+    if ( record ) {
+      return _this12.findAll(def.getRelation(), {
+          where : defineProperty({}, def.foreignKeys, {
+            'contains' : _this12.makeHasManyForeignKeys(mapper, def, record)
+          })
+        }, __opts)
+        .then(function (relatedItems) {
+          def.setLocalField(record, relatedItems);
+        });
+      return records;
+    } else {
+      var _p = [];
+      records.forEach(function (record) {
+        _p.push(_this12.findAll(relatedMapper, {
+          where : defineProperty({}, def.foreignKeys, {
+            'contains' : _this12.makeHasManyForeignKeys(mapper, def, record)
+          })
+        }, __opts));
+      });
+      return Promise.all(_p)
+        .then(function (relatedItems) {
+          var foreignKeysField = def.foreignKeys;
+          for ( var i in records ) {
+            var record        = records[i],
+                relatedItem   = relatedItems[i],
+                _relatedItems = [],
+                id            = jsData.utils.get(record, idAttribute);
+            relatedItem.forEach(function (item) {
+              var foreignKeys = jsData.utils.get(item, foreignKeysField) || [];
+              if ( foreignKeys.indexOf(id) !== -1 ) {
+                _relatedItems.push(item);
+              }
+            });
+            def.setLocalField(record, _relatedItems);
+          }
+          return records;
+        });
+    }
+  },
+
+  /**
+   * load HasOne standard relation (foreignKey)
+   *
+   * @param {*} mapper
+   * @param {*} def
+   * @param {*} records
+   * @param {*} ___opts
+   */
   loadHasOne : function loadHasOne(mapper, def, records, __opts) {
     if ( jsData.utils.isObject(records) && !jsData.utils.isArray(records) ) {
-      return __super__.loadHasOne.call(this, mapper, def, records, __opts);
+      records = [records];
     }
-    throw new Error('findAll with hasOne not supported!');
+    return this.loadHasMany(mapper, def, records, __opts).then(function () {
+      records.forEach(function (record) {
+        var relatedData = def.getLocalField(record);
+        if ( jsData.utils.isArray(relatedData) && relatedData.length ) {
+          def.setLocalField(record, relatedData[0]);
+        }
+      });
+    });
   },
 
-  loadHasManyLocalKeys : function loadHasManyLocalKeys() {
-    throw new Error('find/findAll with hasMany & localKeys not supported!');
+  /**
+   * extract keys for HasMany relation made by foreignKeys
+   *
+   * @param {*} mapper
+   * @param {*} def
+   * @param {*} record
+   */
+  makeHasManyForeignKey : function makeHasManyForeignKey(mapper, def, record) {
+    return def.getForeignKey(record);
   },
 
-  loadHasManyForeignKeys : function loadHasManyForeignKeys() {
-    throw new Error('find/findAll with hasMany & foreignKeys not supported!');
+  /**
+   * extract keys for HasMany relations made by localKeys
+   *
+   * @param {*} mapper
+   * @param {*} def
+   * @param {*} record
+   */
+  makeHasManyLocalKeys : function makeHasManyLocalKeys(mapper, def, record) {
+    var localKeys = [];
+    var itemKeys  = jsData.utils.get(record, def.localKeys) || [];
+    itemKeys      = jsData.utils.isArray(itemKeys) ? itemKeys : Object.keys(itemKeys);
+    localKeys     = localKeys.concat(itemKeys);
+    return unique(localKeys).filter(function (x) {
+      return x;
+    });
+  },
+
+  /**
+   * extract key for BelongsTo relation
+   *
+   * @param {*} mapper
+   * @param {*} def
+   * @param {*} record
+   */
+  makeBelongsToForeignKey : function makeBelongsToForeignKey(mapper, def, record) {
+    return def.getForeignKey(record);
   },
 
   /**

@@ -53,29 +53,29 @@ var _filter = function(need, array, compare) {
   });
 }
 
-var _clearDB = function * () { 
+var _clearDB = function * () {
   yield store.destroyAll('table');
   yield store.destroyAll('chair');
   yield store.destroyAll('guest');
   yield store.destroyAll('log');
 };
 
-var _createDB = function * (check) { 
-  
+var _createDB = function * (check) {
+
   yield _clearDB();
-  
+
   var localdb = JSON.parse(JSON.stringify(db));
 
   if (check) {
     //create tables
     var createMany = yield store.createMany('table', localdb.table);
-  
+
     // create chairs
     localdb.chair.forEach(function (chair) {
       chair.table_id = _find(chair.table_id, localdb.table, 'code').id;
     });
     yield store.createMany('chair', localdb.chair);
-  
+
     // create guests
     localdb.guest.forEach(function (guest) {
       guest.table_ids = _filter(guest.table_ids, localdb.table, 'code').map(function (table) {
@@ -84,7 +84,7 @@ var _createDB = function * (check) {
       guest.chair_id = _find(guest.chair_id, localdb.chair, 'code').id;
     });
     yield store.createMany('guest', localdb.guest);
-    
+
     // create logs
     localdb.log.forEach(function (log) {
       var related = localdb[log.owner_type].find(function (item) {
@@ -98,13 +98,13 @@ var _createDB = function * (check) {
 };
 
 describe('\n\n ####### store configuration #######', function() {
-  
+
   it('initialize store', function * () {
-    
+
     var Adapter =  DatastoreAdapter[config.internalName];
     store = new Container();
     store.registerAdapter(config.name, new Adapter(config.options), config.registerOptions);
-        
+
     // Register all schemas
     Object.keys(schemas).forEach(function (schemaName) {
       var configuration = {
@@ -117,18 +117,18 @@ describe('\n\n ####### store configuration #######', function() {
     assert.notEqual(store, false);
     global.store = store;
   });
-    
-}); 
+
+});
 
 describe('\n\n ####### Mapper Functions #######', function() {
 
   this.timeout(5000);
-  
+
   // create
   describe('create', function () {
-        
+
     var localdb;
-    
+
     before('clear db', function * ()  {
       localdb = yield _createDB(false);
     });
@@ -151,7 +151,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
         assert.equal(chair.table_id, table.id);
       });
     });
-    
+
     it('create 1 chair with belongsTo[table] relation', function * () {
       var tmp_chair = JSON.parse(JSON.stringify(localdb.chair[4]));
       tmp_chair.table = _find(tmp_chair.table_id, localdb.table, 'code');
@@ -160,7 +160,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
       assert.notEqual(chair.table.id, undefined);
       assert.equal(chair.table.id, chair.table_id);
     });
-    
+
     it('create 1 chair with hasOne[guest] relation', function * () {
       var tmp_chair = JSON.parse(JSON.stringify(localdb.chair[0]));
       tmp_chair.guest = _find(tmp_chair.code, localdb.guest, 'chair_id');
@@ -169,7 +169,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
       assert.notEqual(chair.guest.unique, undefined);
       assert.equal(chair.guest.chair_id, chair.id);
     });
-    
+
     it('create 1 guest with belongsTo[chair] relation', function * () {
       var tmp_guest = JSON.parse(JSON.stringify(localdb.guest[3]));
       tmp_guest.chair = _find(tmp_guest.chair_id, localdb.chair, 'code');
@@ -178,7 +178,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
       assert.notEqual(guest.chair.id, undefined);
       assert.equal(guest.chair.id, guest.chair_id);
     });
-    
+
     it('create 1 guest with hasMany[table][localKeys] relation', function * () {
       var tmp_guest = JSON.parse(JSON.stringify(localdb.guest[2]));
       tmp_guest.tables = _filter(tmp_guest.table_ids, localdb.table, 'code');
@@ -189,10 +189,10 @@ describe('\n\n ####### Mapper Functions #######', function() {
     });
 
   });
-  
+
   // createMany
   describe('createMany', function () {
-    
+
     var localdb;
 
     before('create all entities', function * ()  {
@@ -233,7 +233,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
         assert.equal(table.guests.length, _filter(table.code, db.guest, 'table_ids').length);
       });
     });
-    
+
     it('createMany chair with belongsTo[table] relation', function * () {
       var tmp_chairs = JSON.parse(JSON.stringify(localdb.chair));
       tmp_chairs.forEach(function(tmp_chair) {
@@ -246,7 +246,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
         assert.equal(chair.table.id, chair.table_id);
       });
     });
-    
+
     it('createMany chair with hasOne[guest] relation', function * () {
       var tmp_chairs = JSON.parse(JSON.stringify(localdb.chair));
       tmp_chairs.forEach(function(tmp_chair) {
@@ -258,7 +258,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
         assert.equal(!!chair.guest, !!_find(chair.code, localdb.guest, 'chair_id'));
       });
     });
-    
+
     it('createMany guest with belongsTo[chair] relation', function * () {
       var tmp_guests = JSON.parse(JSON.stringify(localdb.guest));
       tmp_guests.forEach(function(tmp_guest) {
@@ -271,7 +271,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
         assert.equal(guest.chair.id, guest.chair_id);
       });
     });
-    
+
     it('createMany guest with hasMany[table][localKeys] relation', function * () {
       var tmp_guests = JSON.parse(JSON.stringify(localdb.guest));
       tmp_guests.forEach(function(tmp_guest) {
@@ -286,12 +286,12 @@ describe('\n\n ####### Mapper Functions #######', function() {
     });
 
   });
-  
+
   // find
   describe('find', function () {
-    
+
     var localdb;
-    
+
     before('create all entities', function * ()  {
       localdb = yield _createDB(true);
     });
@@ -325,7 +325,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
         assert.equal(chair.table_id, table.id);
       });
     });
-    
+
     it('find table loading hasMany[guest][foreignKeys] and hasMany[log][polimorphic] relation', function * () {
       var table = yield store.find('table', localdb.table[0].id, {with : ['guests', 'logs']});
       assert.notEqual(table.id, undefined);
@@ -344,7 +344,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
         assert.equal(log.owner_type, 'table');
       });
     });
-    
+
     it('find chair loading hasOne[guest] and belongsTo[table] relation', function * () {
       var chair = yield store.find('chair', localdb.chair[3].id, {with : ['guest', 'table']});
       assert.notEqual(chair.id, undefined);
@@ -354,7 +354,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
       assert.equal(chair.guest.unique, _find(chair.guest.name, localdb.guest, 'name').unique);
       assert.equal(chair.table.id, chair.table_id);
     });
-    
+
     it('find guest loading belongsTo[chair] and hasMany[table][localKeys] relation', function * () {
       var guest = yield store.find('guest', localdb.guest[0].unique, {with : ['chair', 'tables']});
       assert.notEqual(guest.unique, undefined);
@@ -367,7 +367,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
         assert.notEqual(table.id, undefined);
       });
     });
-    
+
     it('find log loading belongsTo[table, chair, guest][polimorphic]', function * () {
       var log = yield store.find('log', localdb.log[0].id, {with : ['owner']});
       assert.notEqual(log.id, undefined);
@@ -379,9 +379,9 @@ describe('\n\n ####### Mapper Functions #######', function() {
 
   // findAll
   describe('findAll', function () {
-    
+
     var localdb;
-    
+
     before('create all entities', function * ()  {
       localdb = yield _createDB(true);
     });
@@ -402,18 +402,21 @@ describe('\n\n ####### Mapper Functions #######', function() {
       assert.equal(chairs.length, localdb.chair.length);
     });
 
-    it('findAll guest with age between 30 and 35', function * ()  {
+    it('findAll guest with age between 30 and 35 loading hasMany[table][LocalKeys]', function * ()  {
       var guests = yield store.findAll('guest', {
         where: {
           'age' : {'>=' : 30, '<=' : 35}
         }
-      });
+      }, {with : ['tables']});
       assert.equal(guests.length, localdb.guest.filter(function(guest) {
         return guest.age >= 30 && guest.age <= 35;
       }).length);
+      guests.forEach(function(guest) {
+        assert.equal(guest.tables.length, _filter(guest.table_ids, localdb.table, 'id').length);
+      });
     });
 
-    it('findAll table where max_chairs = 3 loading hasMany[chair][foreignKey], hasMany[log][polimorphic] relation', function * ()  {
+    it('findAll table where max_chairs = 3 loading hasMany[chair][foreignKey], hasMany[log][foreignKey][custom_get] relation', function * ()  {
       var tables = yield store.findAll('table', {
         where: {
           'max_chairs' : {'==' : 3}
@@ -425,16 +428,20 @@ describe('\n\n ####### Mapper Functions #######', function() {
         assert.equal(table.log.length, _filter('table', _filter(table.id, localdb.log, 'owner_id'), 'owner_type').length);
       });
     });
-    
-    it('findAll table where id > 1000 loading hasMany[guest][foreignKeys] and hasMany[log][foreignKey][custom_get] relation', function * () {
-      var table = yield store.findAll('table', {
+
+    it('findAll table where max_chairs > 1 loading hasMany[guest][foreignKeys] and hasMany[log][foreignKey][custom_get] relation', function * () {
+      var tables = yield store.findAll('table', {
         where: {
-          'id' : {'>' : 1000}
+          'max_chairs' : {'>' : 1}
         }
       }, {with : ['guests', 'logs']});
-      assert.equal(table.length, 0);
+      assert.equal(tables.length, localdb.table.length);
+      tables.forEach(function(table) {
+        assert.equal(table.guests.length, _filter(table.id, localdb.guest, 'table_ids').length);
+        assert.equal(table.logs.length, _filter('table', _filter(table.id, localdb.log, 'owner_id'), 'owner_type').length);
+      });
     });
-    
+
     it('findAll guest where age in [29,30,31] loading belongsTo[chair] and hasMany[table][localKeys] relation', function * () {
       var guests = yield store.findAll('guest', {
         where : {
@@ -447,7 +454,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
         assert.notEqual(guest.tables, undefined);
       });
     });
-    
+
     it('findAll log where owner_type = chair loading belongsTo[table, chair, guest][polimorphic]', function * () {
       var logs = yield store.findAll('log', {
         where : {
@@ -464,9 +471,9 @@ describe('\n\n ####### Mapper Functions #######', function() {
 
   // destroy
   describe('destroy', function () {
-    
+
     var localdb;
-    
+
     before('create all entities', function * ()  {
       localdb = yield _createDB(true);
     });
@@ -494,9 +501,9 @@ describe('\n\n ####### Mapper Functions #######', function() {
   });
 
   // destroyAll
-  describe('destroyAll', function () {    
+  describe('destroyAll', function () {
     var localdb;
-    
+
     before('create all entities', function * ()  {
       localdb = yield _createDB(true);
     });
@@ -506,7 +513,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
       var check = yield store.findAll('chair');
       assert.equal(check.length, 0);
     });
-    
+
     it('destroyAll table where max_chairs <= 5', function * () {
       var where = {
         where : {
@@ -521,12 +528,12 @@ describe('\n\n ####### Mapper Functions #######', function() {
         return table.max_chairs > 5;
       }).length);
     });
-    
+
     it('destroyAll guest related to table', function * () {
       var where = {
         where : {
           "table_ids" :  {
-            "contains" : localdb.table[0].id 
+            "contains" : localdb.table[0].id
           }
         }
       }
@@ -536,7 +543,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
       assert.equal(check.length, 0);
       assert.equal(check2.length, (localdb.guest.length - _filter(localdb.table[0].id, localdb.guest, 'table_ids').length));
     });
-    
+
     it('destroyAll log where owner_type in [chair, guest]', function * () {
       var where = {
         where : {
@@ -551,12 +558,12 @@ describe('\n\n ####### Mapper Functions #######', function() {
     });
 
   });
-  
+
   // update
   describe('update', function () {
 
     var localdb;
-    
+
     before('create all entities', function * ()  {
       localdb = yield _createDB(true);
     });
@@ -598,12 +605,12 @@ describe('\n\n ####### Mapper Functions #######', function() {
       assert.notEqual(check.table_ids, localdb.guest[1].table_ids);
     });
   });
-  
+
   // updateAll
   describe('updateAll', function () {
 
     var localdb;
-    
+
     before('create all entities', function * ()  {
       localdb = yield _createDB(true);
     });
@@ -633,14 +640,14 @@ describe('\n\n ####### Mapper Functions #######', function() {
         assert.equal(table.max_chairs, 4);
       });
     });
-    
+
   });
-  
+
   // updateMany
   describe('updateMany', function () {
 
     var localdb;
-    
+
     before('create all entities', function * ()  {
       localdb = yield _createDB(true);
     });
@@ -664,7 +671,7 @@ describe('\n\n ####### Mapper Functions #######', function() {
         return table.max_chairs > 4 || table.max_chairs == 1;
       }).length);
     });
-    
+
     it('updateMany guest where age in [29,30,31]', function * () {
       var guests = yield store.findAll('guest', {
         where : {
@@ -682,18 +689,18 @@ describe('\n\n ####### Mapper Functions #######', function() {
       });
       assert.equal(check.length, 0);
     });
-    
+
   });
 
 });
 
-describe('\n\n ####### Record functions #######', function() {  
+describe('\n\n ####### Record functions #######', function() {
 
   // loadRelations
   describe('loadRelations', function () {
-    
+
     var localdb;
-    
+
     before('create all entities', function * ()  {
       localdb = yield _createDB(true);
     });
@@ -770,10 +777,10 @@ describe('\n\n ####### Record functions #######', function() {
   });
 
   //destroy
-  
+
   describe('destroy', function () {
     var localdb;
-      
+
     before('create all entities', function * ()  {
       localdb = yield _createDB(true);
     });
@@ -813,6 +820,6 @@ describe('\n\n ####### Record functions #######', function() {
       var check = yield store.findAll('log', {id : {'==' : localdb.log[0].id}});
       assert.equal(check.length, 0);
     });
-    
+
   });
 });
