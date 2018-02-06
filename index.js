@@ -344,13 +344,18 @@ jsDataAdapter.Adapter.extend({
     var _this4 = this;
 
     return new jsData.utils.Promise(function (resolve, reject) {
-      // googledatastore create his key based on key value we send.
-      // String -> 'name', Int -> 'id
-      id      = (parseInt(id, 10) == id) ? parseInt(id, 10) : id;
-      var key = _this4.datastore.key([_this4.getKind(mapper, opts), id]);
-      _this4.datastore.delete(key, function (err, apiResponse) {
-        return err ? reject(err) : resolve([undefined, apiResponse]);
-      });
+      try {
+        id      = (parseInt(id, 10) == id) ? parseInt(id, 10) : id;
+        var key = _this4.datastore.key([_this4.getKind(mapper, opts), id]);
+        _this4.datastore.delete(key, function(err, apiResponse) {
+          if ( err ) {
+            return reject(err);
+          }
+          resolve([id, apiResponse]);
+        });
+      } catch ( e ) {
+        return reject(e);
+      }
     });
   },
 
@@ -370,13 +375,8 @@ jsDataAdapter.Adapter.extend({
 
     return new jsData.utils.Promise(function (resolve, reject) {
       try {
-        var dsQuery = _this5.datastore.createQuery(_this5.getKind(mapper, opts));
-        dsQuery     = _this5.filterQuery(dsQuery, query, opts);
-        dsQuery     = dsQuery.select('__key__');
-        _this5.datastore.runQuery(dsQuery, function (err, entities) {
-          if ( err ) {
-            return reject(err);
-          }
+        _this5.findAll(mapper, query, opts)
+        .then( function (entities) {
           var keys = entities.map(function (entity) {
             return entity[_this5.datastore.KEY];
           });
@@ -633,7 +633,12 @@ jsDataAdapter.Adapter.extend({
         }
         var id = jsData.utils.get(record, idAttribute);
         if ( !jsData.utils.isUndefined(id) ) {
-          jsData.utils.deepMixIn(record, props[i]);
+          id      = (parseInt(id, 10) == id) ? parseInt(id, 10) : id;
+          for (var key in props[i]) {
+            if (props[i][key] != undefined) {
+              record[key] = props[i][key];
+            }
+          }
           entities.push({
             method : 'update',
             key    : _this9.datastore.key([_this9.getKind(mapper, opts), id]),
