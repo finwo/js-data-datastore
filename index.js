@@ -450,12 +450,11 @@ jsDataAdapter.Adapter.extend({
           _where[property] = {'==' : value};
           return _new;
         });
+        if (!output.length) {
+          delete where[property]['in'];
+          where[property] = {'==' : ''};
+        }
       } else if ( where[property]['contains'] ) {
-        // var _new = JSON.parse(JSON.stringify(query)),
-        //     _where;
-        // if (_new.where) _where = _new.where;
-        // else            _where = _new;
-        // delete _where[property];
         filters[property] = {
           contains : where[property]['contains']
         };
@@ -468,9 +467,6 @@ jsDataAdapter.Adapter.extend({
         // call recursively itself to explode queries obtained
         var _q  = _this.compileFetchQueries(_query);
         queries = queries.concat(_q.queries);
-        // filters = filters.concat(_q.filter(function (filter) {
-        //   if (filters.indexOf(filter))
-        // }));
         filters = filters.concat(_q.filters);
       });
     } else {
@@ -908,31 +904,21 @@ jsDataAdapter.Adapter.extend({
         def.setLocalField(record, relatedItems);
       });
     } else {
-      var localKeys = [];
+      var p = [];
       records.forEach(function (record) {
-        localKeys = localKeys.concat(_this11.makeHasManyLocalKeys(mapper, def, record));
-      });
-      return _this11.findAll(relatedMapper, {
-          where : defineProperty({}, relatedMapper.idAttribute, {
-            'in' : unique(localKeys).filter(function (x) {
-              return x;
+        if (_this11.makeHasManyLocalKeys(mapper, def, record).length) {
+          return _this11.findAll(relatedMapper, {
+            where : defineProperty({}, relatedMapper.idAttribute, {
+              'in' : _this11.makeHasManyLocalKeys(mapper, def, record)
             })
-          })
-        }, __opts)
-        .then(function (relatedItems) {
-          records.forEach(function (item) {
-            var attached = [];
-            var itemKeys = jsData.utils.get(item, def.localKeys) || [];
-            itemKeys     = jsData.utils.isArray(itemKeys) ? itemKeys : Object.keys(itemKeys);
-            relatedItems.forEach(function (relatedItem) {
-              if ( itemKeys && itemKeys.indexOf(relatedItem[relatedMapper.idAttribute]) !== -1 ) {
-                attached.push(relatedItem);
-              }
-            });
-            def.setLocalField(item, attached);
+          }, __opts).then(function (relatedItems) {
+            p.push(def.setLocalField(record, relatedItems));
           });
-          return relatedItems;
-        });
+        } else {
+          p.push(def.setLocalField(record, []));
+        }
+      });
+      return Promise.resolve(p);
     }
   },
 
@@ -1012,6 +998,8 @@ jsDataAdapter.Adapter.extend({
         var relatedData = def.getLocalField(record);
         if ( jsData.utils.isArray(relatedData) && relatedData.length ) {
           def.setLocalField(record, relatedData[0]);
+        } else {
+          def.setLocalField(record, undefined);
         }
       });
     });
