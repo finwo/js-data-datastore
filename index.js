@@ -904,21 +904,25 @@ jsDataAdapter.Adapter.extend({
         def.setLocalField(record, relatedItems);
       });
     } else {
-      var p = [];
+      var _p = [];
       records.forEach(function (record) {
         if (_this11.makeHasManyLocalKeys(mapper, def, record).length) {
-          return _this11.findAll(relatedMapper, {
+          _p.push(_this11.findAll(relatedMapper, {
             where : defineProperty({}, relatedMapper.idAttribute, {
               'in' : _this11.makeHasManyLocalKeys(mapper, def, record)
             })
-          }, __opts).then(function (relatedItems) {
-            p.push(def.setLocalField(record, relatedItems));
-          });
+          }, __opts));
         } else {
-          p.push(def.setLocalField(record, []));
+          _p.push([]);
         }
       });
-      return Promise.resolve(p);
+      return Promise.all(_p)
+      .then(function (relatedItems) {
+        for ( var i in records ) {
+          def.setLocalField(records[i], relatedItems[i]);
+        }
+        return records;
+      });
     }
   },
 
@@ -964,17 +968,7 @@ jsDataAdapter.Adapter.extend({
         .then(function (relatedItems) {
           var foreignKeysField = def.foreignKeys;
           for ( var i in records ) {
-            var record        = records[i],
-                relatedItem   = relatedItems[i],
-                _relatedItems = [],
-                id            = jsData.utils.get(record, idAttribute);
-            relatedItem.forEach(function (item) {
-              var foreignKeys = jsData.utils.get(item, foreignKeysField) || [];
-              if ( foreignKeys.indexOf(id) !== -1 ) {
-                _relatedItems.push(item);
-              }
-            });
-            def.setLocalField(record, _relatedItems);
+            def.setLocalField(records[i], relatedItems[i]);
           }
           return records;
         });
