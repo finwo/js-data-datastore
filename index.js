@@ -271,26 +271,32 @@ jsDataAdapter.Adapter.extend({
         try {
           var apiResponse   = void 0;
           var idAttribute   = mapper.idAttribute;
-          var incompleteKey = _this3.datastore.key([_this3.getKind(mapper)]);
+          var incompleteKey = _this3.datastore.key(_this3.getKind(mapper));
 
-          // Allocate ids
-          _this3.datastore.allocateIds(incompleteKey, records.length, function (err, keys) {
-            if ( err ) {
-              return reject(err);
-            }
-            var entities = records.map(function (_record, i) {
-              jsData.utils.set(_record, idAttribute, keys[i].path[1]);
-              return {
-                key  : keys[i],
-                data : _record
-              };
-            });
-            // Save records
-            _this3.datastore.save(entities, function (err, _apiResponse) {
+          _this3.checkIdAttribute(mapper, records)
+          .then(function() {
+            // Allocate ids
+            _this3.datastore.allocateIds(incompleteKey, records.length, function (err, keys) {
               if ( err ) {
                 return reject(err);
               }
-              return resolve([singular ? records[0] : records, _apiResponse]);
+              var entities = records.map(function (_record, i) {
+                if (_record[idAttribute]) {
+                  keys[i] = _this3.datastore.key([_this3.getKind(mapper), _record[idAttribute]]);
+                }
+                jsData.utils.set(_record, idAttribute, keys[i].path[1]);
+                return {
+                  key  : keys[i],
+                  data : _record
+                };
+              });
+              // Save records
+              _this3.datastore.save(entities, function (err, _apiResponse) {
+                if ( err ) {
+                  return reject(err);
+                }
+                return resolve([singular ? records[0] : records, _apiResponse]);
+              });
             });
           });
 
@@ -505,7 +511,7 @@ jsDataAdapter.Adapter.extend({
           }
         });
         return condition;
-      })
+      });
     }
     if ( queries.length > 1 ) {
       // TODO: sorting
@@ -1069,6 +1075,45 @@ jsDataAdapter.Adapter.extend({
     opts.operators || (opts.operators = {});
     var ownOps = this.operators || {};
     return jsData.utils.isUndefined(opts.operators[operator]) ? ownOps[operator] || OPERATORS[operator] : opts.operators[operator];
+  },
+
+  /**
+   * check if uniques are usable or not
+   */
+  checkIdAttribute : function(mapper, records) {
+    var self   = this,
+        _where = {},
+        ids    = [];
+    records.forEach(function(record) {
+      if (ids.indexOf(record[mapper.idAttribute]) >= 0) {
+        delete record[mapper.idAttribute];
+      } else {
+        ids.push(record[mapper.idAttribute]);
+      }
+    });
+    _where[mapper.idAttribute] = {
+      'in' : records.filter(function(record) {
+        return !!record[mapper.idAttribute];
+      }).map(function(record) {
+        return record[mapper.idAttribute];
+      })
+    };
+    return self.findAll(mapper, {
+      where : _where
+    })
+    .then(function(list) {
+      ids = list.map(function(item) {
+        return item[mapper.idAttribute];
+      });
+      records.forEach(function(record) {
+        if (ids.indexOf(record[mapper.idAttribute]) >= 0) {
+          delete record[mapper.idAttribute];
+        } else {
+          ids.push(record[mapper.idAttribute]);
+        }
+      });
+      return;
+    });
   }
 });
 
