@@ -110,11 +110,10 @@ var defineProperty = function (obj, key, value) {
 
 function DataStoreAdapter(options) {
 
-  if ( 'undefined' === typeof options ||
-       'undefined' === typeof options.config ||
-       'undefined' === typeof options.config.projectId ||
-       'undefined' === typeof options.config.namespace ||
-       'undefined' === typeof options.config.keyFilename
+  if ( !(options && options.config) ||
+       !( ( options.config.projectId && options.config.namespace ) ||
+          ( options.config.keyFilename )
+       )
   ) {
     // TODO EMIT ERROR MISSING OPTIONS
     // console.error('TODO EMIT ERROR MISSING OPTIONS');
