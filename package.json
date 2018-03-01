@@ -4,8 +4,7 @@
   "description": "Datastore adapter for js-data",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha test/index.js",
-    "release": "npm test && node scripts/contributors.js"
+    "test": "./node_modules/.bin/mocha test/index.js"
   },
   "repository": {
     "type": "git",
