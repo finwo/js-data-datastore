@@ -109,15 +109,23 @@ var defineProperty = function (obj, key, value) {
 
 
 function DataStoreAdapter(options) {
-
-  if ( !(options && options.config) ||
-       !( ( options.config.projectId && options.config.namespace ) ||
-          ( options.config.keyFilename )
-       )
-  ) {
-    // TODO EMIT ERROR MISSING OPTIONS
-    // console.error('TODO EMIT ERROR MISSING OPTIONS');
+  options = options || {};
+  if ( 'object' !== typeof options ) {
     return false;
+  }
+  options.config           = options.config || {};
+  options.config.namespace = options.config.namespace || 'development';
+  
+  // We need either a project or keyfile
+  if ( 'undefined' === typeof options.config.projectId &&
+       'undefined' === typeof options.config.keyFilename
+  ) {
+    return false;
+  }
+
+  // Remove the project ID if we have a keyfile
+  if ( 'undefined' !== typeof options.config.keyFilename ) {
+    delete options.config.projectId;
   }
 
   jsData.utils.classCallCheck(this, DataStoreAdapter);
