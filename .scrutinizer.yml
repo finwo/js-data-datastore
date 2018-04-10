@@ -1,7 +1,7 @@
 build:
   environment:
     node: '8.9.4'
-  test:
+  tests:
     override:
       - command: 'npm test'
         coverage:
