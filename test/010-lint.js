@@ -9,7 +9,6 @@ var helpers = require('trackthis-helpers');
 global.approot = path.dirname(__dirname);
 global.co      = require('co');
 global.Promise = require('bluebird');
-global.config  = false;
 
 // Other libraries
 var JSHINT = require('jshint').JSHINT,
