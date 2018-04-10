@@ -14,13 +14,18 @@ function DatastoreAdapter(opts) {
   // Fallback namespace
   opts.config.namespace = opts.config.namespace || 'development';
 
-  // We need either a project or keyfile
+  // We need either a project or key file
   if ('string' !== typeof opts.config.projectId &&
       'string' !== typeof opts.config.keyFilename
   ) {
     throw new Error("Neither a project ID nor a key file was given");
   }
 
+  // If given, the key file must be json
+  if (('string' === typeof opts.config.keyFilename) &&
+      ('.json' !== opts.config.keyFilename.slice(-5))) {
+    throw new Error("The key file must be json");
+  }
 
   this._create = function (resource, attrs, options) {
 
