@@ -1,4 +1,93 @@
-var JSData = require('js-data');
+var JSData  = require('js-data'),
+    Adapter = require('js-data-adapter').Adapter;
+
+function DatastoreAdapter(opts) {
+  Adapter.call(this, opts);
+
+  this._create = function (resource, attrs, options) {
+
+  };
+
+  this._createMany = function (resource, props) {
+
+  };
+
+  this._find = function (resource, id) {
+
+  };
+
+  this._findAll = function (resource, params) {
+
+  };
+
+  this._update = function (resource, id, attrs) {
+
+  };
+
+  this._updateAll = function (resource, attrs, params) {
+
+  };
+
+  this._updateMany = function (resource, records) {
+
+  };
+
+  this._destroy = function (resource, id) {
+
+  };
+
+  this._destroyAll = function (resource, params) {
+
+  };
+
+  this.loadBelongsTo = function (mapper, def, records, __opts) {
+
+  };
+
+  this.loadHasMany = function (mapper, def, records, __opts) {
+
+  };
+
+  this.loadHasManyLocalKeys = function (mapper, def, records, __opts) {
+
+  };
+
+  this.loadHasManyForeignKeys = function (mapper, def, records, __opts) {
+
+  };
+
+  this.loadHasOne = function (mapper, def, records, __opts) {
+
+  };
+
+  this.makeHasManyForeignKey = function (mapper, def, record) {
+
+  };
+
+  this.makeHasManyLocalKeys = function (mapper, def, record) {
+
+  };
+
+  this.makeBelongsToForeignKey = function (mapper, def, record) {
+
+  };
+}
+
+DatastoreAdapter.prototype = Object.create(Adapter.prototype, {
+  constructor : {
+    value        : DatastoreAdapter,
+    enumerable   : false,
+    writable     : true,
+    configurable : true
+  }
+});
+
+Object.defineProperty(DatastoreAdapter, '__super__', {
+  configurable : true,
+  value        : Adapter
+});
+
+module.exports = DatastoreAdapter;
 
 // /*
 //  *  js-data-datastore
