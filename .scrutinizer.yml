@@ -18,7 +18,7 @@ build:
       - command -v gcloud &>/dev/null || curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
       - command -v gcloud &>/dev/null || sudo apt-get -y update
       - command -v gcloud &>/dev/null || sudo apt-get -y install google-cloud-sdk
-      - command -v gcloud
+      - command -v gcloud && config set project ${PROJECT:-trackthis-179709}
 
       # Install or update the cloud datastore emulator
       - sudo apt-get install google-cloud-sdk-datastore-emulator
