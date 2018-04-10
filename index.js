@@ -5,10 +5,20 @@ function DatastoreAdapter(opts) {
   Adapter.call(this, opts);
 
   // We need a config
-  if ( 'undefined' === typeof opts ||
-       'undefined' === typeof opts.config
+  if ('undefined' === typeof opts ||
+      'undefined' === typeof opts.config
   ) {
     throw new Error("No config given during DatastoreAdapter creation");
+  }
+
+  // Fallback namespace
+  opts.config.namespace = opts.config.namespace || 'development';
+
+  // We need either a project or keyfile
+  if ('undefined' === typeof opts.config.projectId &&
+      'undefined' === typeof opts.config.keyFilename
+  ) {
+    throw new Error("Neither a project ID or a key file was given");
   }
 
 
@@ -208,16 +218,6 @@ module.exports = DatastoreAdapter;
 //
 //
 // function DataStoreAdapter(options) {
-//
-//   // Fallback namespace
-//   options.config.namespace = options.config.namespace || 'development';
-//
-//   // We need either a project or keyfile
-//   if ( 'undefined' === typeof options.config.projectId &&
-//        'undefined' === typeof options.config.keyFilename
-//   ) {
-//     return false;
-//   }
 //
 //   // Remove the project ID if we have a keyfile
 //   if ( 'undefined' !== typeof options.config.keyFilename ) {
