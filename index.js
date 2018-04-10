@@ -4,6 +4,14 @@ var JSData  = require('js-data'),
 function DatastoreAdapter(opts) {
   Adapter.call(this, opts);
 
+  // We need a config
+  if ( 'undefined' === typeof opts ||
+       'undefined' === typeof opts.config
+  ) {
+    throw new Error("No config given during DatastoreAdapter creation");
+  }
+
+
   this._create = function (resource, attrs, options) {
 
   };
@@ -200,13 +208,6 @@ module.exports = DatastoreAdapter;
 //
 //
 // function DataStoreAdapter(options) {
-//
-//   // We need a config
-//   if ( 'undefined' === typeof options ||
-//        'undefined' === typeof options.config
-//   ) {
-//     return false;
-//   }
 //
 //   // Fallback namespace
 //   options.config.namespace = options.config.namespace || 'development';
