@@ -4,7 +4,7 @@
   "description": "Datastore adapter for js-data",
   "main": "index.js",
   "scripts": {
-    "test": "gcloud beta emulators datastore start --no-store-on-disk & sleep 5 ; node_modules/.bin/nyc node_modules/.bin/serial-mocha test/* --sort | tee test-output.txt && ./node_modules/.bin/nyc report --reporter=clover && ! grep -q -oP \"\\d+\\sfailing\" test-output.txt && rm test-output.txt || { echo \"Test output is located in 'test-output.txt'\" ; exit 1 ; }",
+    "test": "gcloud beta emulators datastore start --no-store-on-disk & sleep 5 ; node_modules/.bin/nyc node_modules/.bin/serial-mocha test/*.js --sort | tee test-output.txt && ./node_modules/.bin/nyc report --reporter=clover && ! grep -q -oP \"\\d+\\sfailing\" test-output.txt && rm test-output.txt || { echo \"Test output is located in 'test-output.txt'\" ; exit 1 ; }",
     "release": "npm test && node scripts/contributors.js"
   },
   "repository": {
