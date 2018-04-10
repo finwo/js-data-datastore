@@ -27,6 +27,23 @@ function DatastoreAdapter(opts) {
     throw new Error("The key file must be json");
   }
 
+  // Autocomplete settings using the key file if given
+  if ('string' === typeof opts.config.keyFilename) {
+
+    // Fetch key file contents
+    // Not catching the error on purpose
+    var keyfileContents = require(opts.config.keyFilename);
+    if ('object' !== typeof keyfileContents) {
+      throw new Error("The key file does not contain a JSON object");
+    }
+
+    // Auto-fill everything we don't explicitly have
+    opts.config.projectId = opts.config.projectId || keyfileContents.project_id;
+  }
+
+  // Load the datastore adapter
+  this.datastore = require('@google-cloud/datastore')(opts.config);
+
   this._create = function (resource, attrs, options) {
 
   };
