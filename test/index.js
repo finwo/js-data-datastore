@@ -88,7 +88,7 @@ var _createDB = function* (check) {
     // create logs
     localdb.log.forEach(function (log) {
       var related  = localdb[log.owner_type].find(function (item) {
-        return log.owner_id == item.code || log.owner_id == item.name;
+        return ( log.owner_id === item.code ) || ( log.owner_id === item.name );
       });
       log.owner_id = related.id || related.unique;
     });
