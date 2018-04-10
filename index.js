@@ -41,6 +41,10 @@ function DatastoreAdapter(opts) {
     opts.config.projectId = opts.config.projectId || keyfileContents.project_id;
   }
 
+  if ( 'string' !== typeof opts.config.projectId ) {
+    throw new Error("No project id was given");
+  }
+
   // Load the datastore adapter
   this.datastore = require('@google-cloud/datastore')(opts.config);
 
