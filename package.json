@@ -2,7 +2,7 @@
   "name": "js-data-datastore",
   "version": "1.1.2",
   "description": "Datastore adapter for js-data",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
     "tmp" : "gcloud beta emulators datastore start --no-store-on-disk & sleep 5 ; ",
     "test": "node_modules/.bin/nyc node_modules/.bin/serial-mocha test/*.js --sort | tee test-output.txt && ./node_modules/.bin/nyc report --reporter=clover && ! grep -q -oP \"\\d+\\sfailing\" test-output.txt && rm test-output.txt || { echo \"Test output is located in 'test-output.txt'\" ; exit 1 ; }"
