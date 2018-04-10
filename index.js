@@ -15,10 +15,10 @@ function DatastoreAdapter(opts) {
   opts.config.namespace = opts.config.namespace || 'development';
 
   // We need either a project or keyfile
-  if ('undefined' === typeof opts.config.projectId &&
-      'undefined' === typeof opts.config.keyFilename
+  if ('string' !== typeof opts.config.projectId &&
+      'string' !== typeof opts.config.keyFilename
   ) {
-    throw new Error("Neither a project ID or a key file was given");
+    throw new Error("Neither a project ID nor a key file was given");
   }
 
 
