@@ -3,4 +3,34 @@ build:
     node: '8.9.4'
   test:
     override:
-      - npm test
+      - command: 'npm test'
+        coverage:
+          file: 'coverage/clover.xml'
+          format: 'clover'
+
+  dependencies:
+    override:
+
+      # Install gcloud if not present
+      - command -v gcloud &>/dev/null || command -v apt-get &>/dev/null
+      - command -v gcloud &>/dev/null || export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)"
+      - command -v gcloud &>/dev/null || [ -f  /etc/apt/sources.list.d/google-cloud-sdk.list ] || echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+      - command -v gcloud &>/dev/null || curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+      - command -v gcloud &>/dev/null || sudo apt-get -y update
+      - command -v gcloud &>/dev/null || sudo apt-get -y install google-cloud-sdk
+      - command -v gcloud
+
+      # Install or update the cloud datastore emulator
+      - sudo apt-get install google-cloud-sdk-datastore-emulator
+
+      # npm dependencies
+      - npm rebuild
+      - npm install
+
+checks:
+  javascript:
+    code_rating: true
+
+filter:
+  excluded_paths:
+    - "*.min.js" # Don't analyze minified files

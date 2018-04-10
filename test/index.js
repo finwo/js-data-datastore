@@ -16,7 +16,7 @@ var path             = require('path'),
         config : {
           projectId   : 'trackthis-179709',
           namespace   : 'test',
-          keyFilename : 'client-secret.json',
+          // keyFilename : 'client-secret.json',
           apiEndpoint : 'http://localhost:8081',
           port        : 8081
         }
