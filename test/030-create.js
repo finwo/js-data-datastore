@@ -51,22 +51,17 @@ co(function* () {
     store.defineMapper(kind, schemas[kind]);
   });
 
-  suite.addTest(new Test('create', function (done) {
+  suite.addTest(new Test('createMany', function (done) {
     co(function* () {
-      var tasks = [];
-      while (localdb.table.length > 0) {
-        var table = localdb.table.shift();
-        tasks.push(store.create('table', table));
-      }
+      var result = yield store.createMany('table', localdb.table);
+      assert.equal(result.length,3);
+      done();
+    });
+  }));
 
-      Promise.all(tasks)
-             .then(function (result) {
-               console.log('resolve', arguments);
-               done();
-             }, function (err) {
-               assert.equal(err, undefined);
-               done();
-             });
+  suite.addTest(new Test('create', function(done) {
+    co(function*() {
+      done();
     });
   }));
 

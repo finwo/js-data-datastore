@@ -69,28 +69,28 @@ module.exports = function (store) {
           }
         },
         hasMany   : {
-          log : {
-            localField : 'logs',
-            foreignKey : 'owner_id',
-            load       : function (Chair, relationDef, chair, options) {
-              console.log('finding chair.log');
-              return store.findAll('log', {
-                where : {
-                  owner_id   : {'==' : chair.id},
-                  owner_type : {'==' : 'chair'}
-                }
-              });
-            },
-            get        : function (Chair, relationDef, chair, origGetter) {
-              console.log('finding chair.log');
-              return store.findAll('log', {
-                where : {
-                  owner_id   : {'==' : chair.id},
-                  owner_type : {'==' : 'chair'}
-                }
-              });
-            }
-          }
+          // log : {
+          //   localField : 'logs',
+          //   foreignKey : 'owner_id',
+          //   load       : function (Chair, relationDef, chair, options) {
+          //     console.log('finding chair.log');
+          //     return store.findAll('log', {
+          //       where : {
+          //         owner_id   : {'==' : chair.id},
+          //         owner_type : {'==' : 'chair'}
+          //       }
+          //     });
+          //   },
+          //   get        : function (Chair, relationDef, chair, origGetter) {
+          //     console.log('finding chair.log');
+          //     return store.findAll('log', {
+          //       where : {
+          //         owner_id   : {'==' : chair.id},
+          //         owner_type : {'==' : 'chair'}
+          //       }
+          //     });
+          //   }
+          // }
         }
       }
     },
@@ -125,28 +125,28 @@ module.exports = function (store) {
             localField : 'tables',
             localKeys  : 'table_ids'
           },
-          log   : {
-            localField : 'logs',
-            foreignKey : 'owner_id',
-            load       : function (Guest, relationDef, guest, options) {
-              console.log('finding guest.log');
-              return store.findAll('log', {
-                where : {
-                  owner_id   : {'==' : guest.unique},
-                  owner_type : {'==' : 'guest'}
-                }
-              });
-            },
-            get        : function (Guest, relationDef, guest, origGetter) {
-              console.log('finding guest.log');
-              return store.findAll('log', {
-                where : {
-                  owner_id   : {'==' : guest.unique},
-                  owner_type : {'==' : 'guest'}
-                }
-              });
-            }
-          }
+          // log   : {
+          //   localField : 'logs',
+          //   foreignKey : 'owner_id',
+          //   load       : function (Guest, relationDef, guest, options) {
+          //     console.log('finding guest.log');
+          //     return store.findAll('log', {
+          //       where : {
+          //         owner_id   : {'==' : guest.unique},
+          //         owner_type : {'==' : 'guest'}
+          //       }
+          //     });
+          //   },
+          //   get        : function (Guest, relationDef, guest, origGetter) {
+          //     console.log('finding guest.log');
+          //     return store.findAll('log', {
+          //       where : {
+          //         owner_id   : {'==' : guest.unique},
+          //         owner_type : {'==' : 'guest'}
+          //       }
+          //     });
+          //   }
+          // }
         }
       },
       idAttribute : 'unique',
