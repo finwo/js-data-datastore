@@ -15,6 +15,7 @@ var JSHINT = require('jshint').JSHINT,
     files  = [];
 
 var DatastoreAdapter = require('../'),
+    DS               = require('js-data').DataStore,
     Mocha            = global.Mocha || require('mocha'),
     Test             = Mocha.Test,
     Suite            = Mocha.Suite,
@@ -31,17 +32,21 @@ co(function* () {
 
       var opts = {
         config: {
+          namespace: 'test',
           keyFilename: path.join(approot,'client-secret.json')
         }
       };
 
-      var adapter = new DatastoreAdapter(opts);
+      var store = new DS();
+      store.registerAdapter('gdatastore',new DatastoreAdapter(opts), {
+        'default': true
+      });
 
-      adapter.findAll('account', {
-              'unique': {
-                '===': 'ADMIN'
-              }
-             })
+      store.defineMapper('account', {
+         idAttribute: 'unique'
+      });
+
+      store.findAll('account')
              .then(function(result) {
                console.log(result);
              });
