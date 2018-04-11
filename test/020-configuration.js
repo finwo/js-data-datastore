@@ -10,10 +10,6 @@ global.approot = path.dirname(__dirname);
 global.co      = require('co');
 global.Promise = require('bluebird');
 
-// Other libraries
-var JSHINT = require('jshint').JSHINT,
-    files  = [];
-
 var DatastoreAdapter = require('../'),
     DS               = require('js-data').DataStore,
     Mocha            = global.Mocha || require('mocha'),
@@ -27,36 +23,41 @@ suite.timeout(60000);
 // Generate the file list
 co(function* () {
 
+  var opts = {
+    config : {
+      namespace   : 'test',
+      keyFilename : path.join(approot, 'client-secret.json')
+    }
+  };
+
+  // Initialize store
+  var store = new DS();
+  store.registerAdapter('gdatastore', new DatastoreAdapter(opts), {
+    'default' : true
+  });
+
+  // Load all schemas
+  var schemas = require('./resources/schemas'),
+      localdb = require('./resources/database');
+  Object.keys(schemas).forEach(function(kind) {
+    store.defineMapper(kind,schemas[kind]);
+  });
+
   suite.addTest(new Test('Connect to self-defined local instance', function (done) {
     co(function* () {
 
-      var opts = {
-        config : {
-          namespace   : 'test',
-          keyFilename : path.join(approot, 'client-secret.json')
-        }
-      };
-
-      var store = new DS();
-      store.registerAdapter('gdatastore', new DatastoreAdapter(opts), {
-        'default' : true
-      });
-
-      store.defineMapper('account', {
-        idAttribute : 'unique'
-      });
-
       store.findAll('account', {
              'unique' : {
-               '===' : 'nonExistantUnique'
+               '===' : 'nonExistentUnique'
              }
            })
            .then(function (result) {
              assert.equal(JSON.stringify(result), '[]');
+             done();
+           }, function(err) {
+             assert.equal(err,undefined);
+             done();
            });
-
-      // Success!
-      done();
     });
   }));
 
