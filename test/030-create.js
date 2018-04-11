@@ -16,7 +16,7 @@ var DatastoreAdapter = require('../'),
     Test             = Mocha.Test,
     Suite            = Mocha.Suite,
     mocha            = global.mocha || new Mocha(),
-    suite            = Suite.create(mocha.suite, 'Configuration');
+    suite            = Suite.create(mocha.suite, 'Creating entities');
 
 suite.timeout(60000);
 
@@ -38,22 +38,24 @@ co(function* () {
 
   // Load all schemas
   var schemas = require('./resources/schemas'),
-      localdb = require('./resources/database');
+      localdb = JSON.parse(JSON.stringify(require('./resources/database')));
   Object.keys(schemas).forEach(function(kind) {
     store.defineMapper(kind,schemas[kind]);
   });
 
-  suite.addTest(new Test('Connect to self-defined local instance', function (done) {
+  suite.addTest(new Test('create', function (done) {
     co(function* () {
-
-      try {
-        yield store.createMany()
-      } catch(e) {
-
+      var tasks = [];
+      while(localdb.table.length>0) {
+        var table = localdb.table.shift();
+        tasks.push(store.create('table',table));
       }
 
-      // Success!
-      done();
+      Promise.all(tasks)
+             .then(function(result) {
+               console.log(arguments);
+               done();
+             });
     });
   }));
 
