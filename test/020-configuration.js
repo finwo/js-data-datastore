@@ -14,7 +14,7 @@ global.Promise = require('bluebird');
 var JSHINT = require('jshint').JSHINT,
     files  = [];
 
-var DatastoreAdapter = require('../index'),
+var DatastoreAdapter = require('../'),
     Mocha            = global.Mocha || require('mocha'),
     Test             = Mocha.Test,
     Suite            = Mocha.Suite,
