@@ -18,7 +18,7 @@ var DatastoreAdapter = require('../'),
     mocha            = global.mocha || new Mocha(),
     suite            = Suite.create(mocha.suite, 'Configuration');
 
-suite.timeout(60000);
+suite.timeout(10000);
 
 // Generate the file list
 co(function* () {

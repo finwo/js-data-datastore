@@ -1,6 +1,7 @@
 var path   = require('path'),
     assert = require('assert'),
-    fs     = require('fs-extra');
+    fs     = require('fs-extra'),
+    url    = require('url');
 
 process.env.DEBUG = '1';
 var helpers       = require('trackthis-helpers');
@@ -18,15 +19,22 @@ var DatastoreAdapter = require('../'),
     mocha            = global.mocha || new Mocha(),
     suite            = Suite.create(mocha.suite, 'Creating entities');
 
-suite.timeout(60000);
+suite.timeout(10000);
 
 // Generate the file list
 co(function* () {
 
+  var apiEndPoint = url.parse(process.env.DATASTORE_EMULATOR_HOST || 'http://localhost:8081');
+
   var opts = {
     config : {
       namespace   : 'test',
-      keyFilename : path.join(approot, 'client-secret.json')
+      projectId   : process.env.DATASTORE_PROJECT_ID || process.env.DATASTORE_PROJECTID || 'testing',
+
+      apiEndpoint : url.format(apiEndPoint),
+      port        : apiEndPoint.port
+
+      // keyFilename : path.join(approot, 'client-secret.json')
     }
   };
 

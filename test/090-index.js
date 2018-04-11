@@ -20,7 +20,7 @@ var Suite = Mocha.Suite;
 var mocha = global.mocha || new Mocha();
 var suite = Suite.create(mocha.suite,'Linting all javascript files');
 
-suite.timeout(60000);
+suite.timeout(10000);
 
 // Generate the file list
 co(function* () {

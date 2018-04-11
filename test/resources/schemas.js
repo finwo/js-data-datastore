@@ -159,7 +159,7 @@ module.exports = function (store) {
       },
       relations : {
         belongsTo : {
-          owner : {
+          table : {
             localField : 'owner',
             foreignKey : 'owner_id',
             load       : function (Log, relationDef, log, options) {
