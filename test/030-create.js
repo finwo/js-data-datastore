@@ -39,21 +39,24 @@ co(function* () {
   // Load all schemas
   var schemas = require('./resources/schemas'),
       localdb = JSON.parse(JSON.stringify(require('./resources/database')));
-  Object.keys(schemas).forEach(function(kind) {
-    store.defineMapper(kind,schemas[kind]);
+  Object.keys(schemas).forEach(function (kind) {
+    store.defineMapper(kind, schemas[kind]);
   });
 
   suite.addTest(new Test('create', function (done) {
     co(function* () {
       var tasks = [];
-      while(localdb.table.length>0) {
+      while (localdb.table.length > 0) {
         var table = localdb.table.shift();
-        tasks.push(store.create('table',table));
+        tasks.push(store.create('table', table));
       }
 
       Promise.all(tasks)
-             .then(function(result) {
-               console.log(arguments);
+             .then(function (result) {
+               console.log('resolve', arguments);
+               done();
+             }, function (err) {
+               assert.equal(err, undefined);
                done();
              });
     });
