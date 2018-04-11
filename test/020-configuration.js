@@ -3,7 +3,7 @@ var path   = require('path'),
     fs     = require('fs-extra');
 
 process.env.DEBUG = '1';
-var helpers = require('trackthis-helpers');
+var helpers       = require('trackthis-helpers');
 
 // Defining globals
 global.approot = path.dirname(__dirname);
@@ -20,36 +20,40 @@ var DatastoreAdapter = require('../'),
     Test             = Mocha.Test,
     Suite            = Mocha.Suite,
     mocha            = global.mocha || new Mocha(),
-    suite            = Suite.create(mocha.suite,'Configuration');
+    suite            = Suite.create(mocha.suite, 'Configuration');
 
 suite.timeout(60000);
 
 // Generate the file list
 co(function* () {
 
-  suite.addTest(new Test('Connect to self-defined local instance', function(done) {
-    co(function*() {
+  suite.addTest(new Test('Connect to self-defined local instance', function (done) {
+    co(function* () {
 
       var opts = {
-        config: {
-          namespace: 'test',
-          keyFilename: path.join(approot,'client-secret.json')
+        config : {
+          namespace   : 'test',
+          keyFilename : path.join(approot, 'client-secret.json')
         }
       };
 
       var store = new DS();
-      store.registerAdapter('gdatastore',new DatastoreAdapter(opts), {
-        'default': true
+      store.registerAdapter('gdatastore', new DatastoreAdapter(opts), {
+        'default' : true
       });
 
       store.defineMapper('account', {
-         idAttribute: 'unique'
+        idAttribute : 'unique'
       });
 
-      store.findAll('account')
-             .then(function(result) {
-               console.log(result);
-             });
+      store.findAll('account', {
+             'unique' : {
+               '===' : 'nonExistantUnique'
+             }
+           })
+           .then(function (result) {
+             console.log(result);
+           });
 
       //
       // // Load the file's contents
