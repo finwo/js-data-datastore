@@ -37,7 +37,7 @@ co(function* () {
   });
 
   // Load all schemas
-  var schemas = require('./resources/schemas'),
+  var schemas = require('./resources/schemas')(store),
       localdb = JSON.parse(JSON.stringify(require('./resources/database')));
   Object.keys(schemas).forEach(function (kind) {
     store.defineMapper(kind, schemas[kind]);
