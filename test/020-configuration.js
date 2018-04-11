@@ -52,42 +52,8 @@ co(function* () {
              }
            })
            .then(function (result) {
-             console.log(result);
+             assert.equal(JSON.stringify(result), '[]');
            });
-
-      //
-      // // Load the file's contents
-      // var contents;
-      // try {
-      //   contents = (yield fs.readFile(filename)).toString();
-      // } catch(e) {
-      //   return done(new Error(e));
-      // }
-      //
-      // // Basic contents validation
-      // try {
-      //   assert.equal(typeof contents,'string');
-      //   assert.equal(contents.length>0,true);
-      // } catch(e) {
-      //   return done(e);
-      // }
-      //
-      // // Start linting
-      // JSHINT(contents, { esversion : 6, noyield : true, loopfunc : true });
-      // var hintData;
-      //
-      // // Fetch the lint result
-      // try {
-      //   hintData = JSHINT.data();
-      // } catch(e) {
-      //   return done(new Error(e));
-      // }
-      //
-      // // Return errors if needed
-      // if(hintData.errors) {
-      //   var err = hintData.errors.shift();
-      //   return done(new Error(`(${err.code}) ${err.scope}:${err.line}:${err.character} ${err.reason}`));
-      // }
 
       // Success!
       done();
