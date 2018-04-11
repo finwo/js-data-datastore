@@ -38,15 +38,20 @@ co(function* () {
 
   // Load all schemas
   var schemas = require('./resources/schemas'),
-      localdb = require('./resources/database');
+      localdb = JSON.parse(JSON.stringify(require('./resources/database')));
   Object.keys(schemas).forEach(function(kind) {
     store.defineMapper(kind,schemas[kind]);
   });
 
-  suite.addTest(new Test('Connect to self-defined local instance', function (done) {
+  suite.addTest(new Test('Fetching 0 records from instance', function (done) {
     co(function* () {
 
-      store.findAll('account', {
+      // Define a mapper we'll use
+      store.defineMapper('noTable', {
+        idAttribute: 'unique'
+      });
+
+      store.findAll('noTable', {
              'unique' : {
                '===' : 'nonExistentUnique'
              }
