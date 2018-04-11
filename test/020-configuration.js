@@ -37,6 +37,15 @@ co(function* () {
 
       var adapter = new DatastoreAdapter(opts);
 
+      adapter.findAll('account', {
+              'unique': {
+                '===': 'ADMIN'
+              }
+             })
+             .then(function(result) {
+               console.log(result);
+             });
+
       //
       // // Load the file's contents
       // var contents;
