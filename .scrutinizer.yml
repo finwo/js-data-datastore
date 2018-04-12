@@ -24,7 +24,7 @@ build:
       - command -v gcloud && gcloud config set project ${PROJECT:-trackthis-179709}
 
       # Install or update the cloud datastore emulator
-      - sudo apt-get install google-cloud-sdk-datastore-emulator
+      - sudo apt-get -y install google-cloud-sdk-datastore-emulator
 
       # npm dependencies
       - npm rebuild
