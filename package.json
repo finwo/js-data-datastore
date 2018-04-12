@@ -1,11 +1,11 @@
 {
   "name": "js-data-datastore",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Datastore adapter for js-data",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
-    "test": "./node_modules/.bin/mocha test/index.js",
-    "release": "npm test && node scripts/contributors.js"
+    "tmp": "gcloud beta emulators datastore start --no-store-on-disk & sleep 5 ; ",
+    "test": "node_modules/.bin/nyc node_modules/.bin/serial-mocha test/*.js --sort | tee test-output.txt && ./node_modules/.bin/nyc report --reporter=clover && ! grep -q -oP \"\\d+\\sfailing\" test-output.txt && rm test-output.txt || { echo \"Test output is located in 'test-output.txt'\" ; exit 1 ; }"
   },
   "repository": {
     "type": "git",
@@ -14,7 +14,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@google-cloud/datastore": "^1.1.0",
+    "@google-cloud/datastore": "^1.4.0",
+    "co": "^4.6.0",
     "js-data": "^3.0.1",
     "js-data-adapter": "^0.8.5"
   },
@@ -23,7 +24,12 @@
   },
   "homepage": "https://github.com/trackthis/js-data-datastore#readme",
   "devDependencies": {
+    "co-mocha": "^1.2.2",
+    "fs-extra": "^5.0.0",
+    "jshint": "^2.9.5",
     "mocha": "^4.0.1",
-    "co-mocha": "^1.2.1"
+    "nyc": "^11.6.0",
+    "serial-mocha": "0.0.4",
+    "trackthis-helpers": "^0.4.2"
   }
 }
