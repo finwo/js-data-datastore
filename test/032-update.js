@@ -42,40 +42,72 @@ co(function* () {
   });
 
   suite.addTest(new Test('update', function (done) {
-    co(function* () {
-      var tmp_table = (yield store.findAll('table', {limit:1})).shift();
-      var table     = yield store.update('table', tmp_table.id, {code : 'new_code'});
-      assert.equal(table.id, tmp_table.id);
-      assert.equal(table.code, 'new_code');
-      assert.notEqual(table.code, localdb.table[0].code);
-      var check = yield store.find('table', tmp_table.id);
-      assert.equal(check.id, tmp_table.id);
-      assert.equal(check.code, 'new_code');
-      assert.notEqual(check.code, localdb.table[0].code);
-      done();
-    });
+    new Promise(function (resolve) {
+      resolve(
+        co(function* () {
+          var tmp_table = (yield store.findAll('table', {limit : 1})).shift();
+          var table     = yield store.update('table', tmp_table.id, {code : 'new_code'});
+          assert.equal(table.id, tmp_table.id);
+          assert.equal(table.code, 'new_code');
+          assert.notEqual(table.code, localdb.table[0].code);
+          var check = yield store.find('table', tmp_table.id);
+          assert.equal(check.id, tmp_table.id);
+          assert.equal(check.code, 'new_code');
+          assert.notEqual(check.code, localdb.table[0].code);
+          done();
+        })
+      );
+    }).catch(done);
   }));
 
   suite.addTest(new Test('updateMany', function (done) {
-    done();
+    new Promise(function (resolve) {
+      resolve(
+        co(function* () {
+          var tables = yield store.findAll('table', {
+            where : {
+              'max_chairs' : {'>' : 4}
+            }
+          });
+
+          tables.forEach(function (table) {
+            table.max_chairs = 1;
+          });
+          var tables_updated = yield store.updateMany('table', tables, {});
+          var check          = yield store.findAll('table', {
+            where : {
+              'max_chairs' : {'==' : 1}
+            }
+          });
+          assert.equal(check.length, localdb.table.filter(function (table) {
+            return (table.max_chairs > 4) || (table.max_chairs === 1);
+          }).length);
+
+          done();
+        }));
+    }).catch(done);
   }));
 
 
   suite.addTest(new Test('updateAll', function (done) {
-    co(function*() {
-      var guests = yield store.updateAll('guest', {age : 20}, {
-        where : {
-          'age' : {'>=' : 30, '<=' : 35}
-        }
-      });
-      assert.equal(guests.length, localdb.guest.filter(function (guest) {
-        return guest.age >= 30 && guest.age <= 35;
-      }).length);
-      guests.forEach(function (guest) {
-        assert.equal(guest.age, 20);
-      });
-      done();
-    });
+    new Promise(function (resolve) {
+      resolve(
+        co(function* () {
+          var guests = yield store.updateAll('guest', {age : 20}, {
+            where : {
+              'age' : {'>=' : 30, '<=' : 35}
+            }
+          });
+          assert.equal(guests.length, localdb.guest.filter(function (guest) {
+            return guest.age >= 30 && guest.age <= 35;
+          }).length);
+          guests.forEach(function (guest) {
+            assert.equal(guest.age, 20);
+          });
+          done();
+        })
+      );
+    }).catch(done);
   }));
 
   mocha.run();

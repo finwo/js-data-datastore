@@ -63,6 +63,8 @@ co(function* () {
             limit : 1
           });
 
+          assert.equal(tables.length,1);
+
           // Assign the table's ID to the chair
           var table      = tables.shift();
           chair.table_id = table.id;
@@ -75,7 +77,7 @@ co(function* () {
           delete chair.id;
           assert.equal(JSON.stringify(result), JSON.stringify(chair));
         });
-      }).bind(null, localdb.chair.shift()));
+      }).bind(null, localdb.chair.shift()), done);
     }
 
     // Finish up our tests
@@ -129,7 +131,7 @@ co(function* () {
           // Verify the result
           assert.equal(JSON.stringify(actual),JSON.stringify(expected));
         });
-      }).bind(null,localdb.guest.shift()));
+      }).bind(null,localdb.guest.shift()), done);
     }
     queue.then(done);
   }));
