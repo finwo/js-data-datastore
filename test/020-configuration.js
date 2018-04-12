@@ -23,12 +23,7 @@ suite.timeout(10000);
 // Generate the file list
 co(function* () {
 
-  var opts = {
-    config : {
-      namespace   : 'test',
-      keyFilename : path.join(approot, 'client-secret.json')
-    }
-  };
+  var opts = require('./resources/opts');
 
   // Initialize store
   var store = new DS();

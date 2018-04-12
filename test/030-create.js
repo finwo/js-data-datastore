@@ -24,8 +24,6 @@ suite.timeout(10000);
 // Generate the file list
 co(function* () {
 
-  var apiEndPoint = url.parse(process.env.DATASTORE_EMULATOR_HOST || 'http://localhost:8081');
-
   var opts = require('./resources/opts');
 
   // Initialize store
