@@ -641,18 +641,6 @@ co(function* () {
 //       localdb = yield _createDB(true);
 //     });
 //
-//     it('update 1 table', function* () {
-//       var tmp_table = JSON.parse(JSON.stringify(localdb.table[0]));
-//       var table     = yield store.update('table', tmp_table.id, {code : 'new_code'});
-//       assert.equal(table.id, tmp_table.id);
-//       assert.equal(table.code, 'new_code');
-//       assert.notEqual(table.code, localdb.table[0].code);
-//       var check = yield store.find('table', tmp_table.id);
-//       assert.equal(check.id, tmp_table.id);
-//       assert.equal(check.code, 'new_code');
-//       assert.notEqual(check.code, localdb.table[0].code);
-//     });
-//
 //     it('update 1 chair', function* () {
 //       var tmp_chair = JSON.parse(JSON.stringify(localdb.chair[0]));
 //       var chair     = yield store.update('chair', tmp_chair.id, {table_id : ''});
