@@ -28,7 +28,7 @@ co(function* () {
 
   var opts = {
     config : {
-      namespace   : 'test',
+      namespace : 'test',
 
       // projectId   : process.env.DATASTORE_PROJECT_ID || process.env.DATASTORE_PROJECTID || 'testing',
       // apiEndpoint : url.format(apiEndPoint),
@@ -54,14 +54,44 @@ co(function* () {
   suite.addTest(new Test('createMany', function (done) {
     co(function* () {
       var result = yield store.createMany('table', localdb.table);
-      assert.equal(result.length,3);
+      assert.equal(result.length, 3);
+      console.log(JSON.parse(JSON.stringify(result)));
       done();
     });
   }));
 
-  suite.addTest(new Test('create', function(done) {
-    co(function*() {
-      done();
+  suite.addTest(new Test('create', function (done) {
+    co(function* () {
+
+      // Loop through all chairs we need to store
+      var queue = Promise.resolve();
+      while (localdb.chair.length) {
+        queue = queue.then((function (chair) {
+          return co(function* () {
+
+            // Fetch the table this chair belongs to
+            var tables = yield store.findAll('table', {
+              where : {'code' : {'===' : chair.table_id}},
+              limit : 1
+            });
+
+            // Assign the table's ID to the chair
+            var table      = tables.shift();
+            chair.table_id = table.id;
+
+            // Store the chair & fetch the result of it
+            var result = JSON.parse(JSON.stringify(yield store.create('chair', chair)));
+
+            // Test if the outcome is correct
+            delete result.id;
+            delete chair.id;
+            assert.equal(JSON.stringify(result), JSON.stringify(chair));
+          });
+        }).bind(null, localdb.chair.shift()));
+      }
+
+      // Finish up our tests
+      queue.then(done);
     });
   }));
 
