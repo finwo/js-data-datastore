@@ -62,37 +62,20 @@ co(function* () {
 
 
   suite.addTest(new Test('updateAll', function (done) {
-
-    // Loop through all chairs we need to store
-    var queue = Promise.resolve();
-
-    // while (localdb.chair.length) {
-    //   queue = queue.then((function (chair) {
-    //     return co(function* () {
-    //
-    //       // Fetch the table this chair belongs to
-    //       var tables = yield store.findAll('table', {
-    //         where : {'code' : {'===' : chair.table_id}},
-    //         limit : 1
-    //       });
-    //
-    //       // Assign the table's ID to the chair
-    //       var table      = tables.shift();
-    //       chair.table_id = table.id;
-    //
-    //       // Store the chair & fetch the result of it
-    //       var result = JSON.parse(JSON.stringify(yield store.create('chair', chair)));
-    //
-    //       // Test if the outcome is correct
-    //       delete result.id;
-    //       delete chair.id;
-    //       assert.equal(JSON.stringify(result), JSON.stringify(chair));
-    //     });
-    //   }).bind(null, localdb.chair.shift()));
-    // }
-
-    // Finish up our tests
-    queue.then(done);
+    co(function*() {
+      var guests = yield store.updateAll('guest', {age : 20}, {
+        where : {
+          'age' : {'>=' : 30, '<=' : 35}
+        }
+      });
+      assert.equal(guests.length, localdb.guest.filter(function (guest) {
+        return guest.age >= 30 && guest.age <= 35;
+      }).length);
+      guests.forEach(function (guest) {
+        assert.equal(guest.age, 20);
+      });
+      done();
+    });
   }));
 
   mocha.run();
