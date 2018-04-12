@@ -26,17 +26,7 @@ co(function* () {
 
   var apiEndPoint = url.parse(process.env.DATASTORE_EMULATOR_HOST || 'http://localhost:8081');
 
-  var opts = {
-    config : {
-      namespace : 'test',
-
-      // projectId   : process.env.DATASTORE_PROJECT_ID || process.env.DATASTORE_PROJECTID || 'testing',
-      // apiEndpoint : url.format(apiEndPoint),
-      // port        : apiEndPoint.port
-
-      keyFilename : path.join(approot, 'client-secret.json')
-    }
-  };
+  var opts = require('./resources/opts');
 
   // Initialize store
   var store = new DS();
