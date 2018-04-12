@@ -5,7 +5,7 @@ build:
       DATASTORE_EMULATOR_HOST: http://localhost:666/
   tests:
     override:
-      - command: 'sudo gcloud beta emulators datastore start --no-legacy --host-port=localhost:666 --consistency=1 &'
+      - command: 'sudo gcloud beta emulators datastore start --no-legacy --host-port=localhost:666 --consistency=1 &>/dev/null &'
       - command: 'npm test'
         coverage:
           file: 'coverage/clover.xml'
