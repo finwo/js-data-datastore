@@ -6,6 +6,7 @@ process.env.DEBUG = '1';
 var helpers = require('trackthis-helpers');
 
 // Defining globals
+/** global: approot */
 global.approot = path.dirname(__dirname);
 global.co      = require('co');
 global.Promise = require('bluebird');
@@ -30,12 +31,12 @@ suite.addTest(new Test('Verifying file list',function() {
 co(function* () {
   files = (yield fs.scandir(approot))
     .filter(function (filename) {
-      if ( filename.substr(-3) !== '.js' ) return false;
-      if ( filename.substr(-7) === '.min.js' ) return false;
-      if ( filename.indexOf(path.sep + '.git' + path.sep) >= 0 ) return false;
-      if ( filename.indexOf(path.sep + '.idea' + path.sep) >= 0 ) return false;
-      if ( filename.indexOf(path.sep + 'coverage' + path.sep) >= 0 ) return false;
-      if ( filename.indexOf(path.sep + 'node_modules' + path.sep) >= 0 ) return false;
+      if ( filename.substr(-3) !== '.js' ) { return false; }
+      if ( filename.substr(-7) === '.min.js' ) { return false; }
+      if ( filename.indexOf(path.sep + '.git' + path.sep) >= 0 ) { return false; }
+      if ( filename.indexOf(path.sep + '.idea' + path.sep) >= 0 ) { return false; }
+      if ( filename.indexOf(path.sep + 'coverage' + path.sep) >= 0 ) { return false; }
+      if ( filename.indexOf(path.sep + 'node_modules' + path.sep) >= 0 ) { return false; }
       return true;
     });
 
@@ -77,7 +78,7 @@ co(function* () {
         }
 
         // Success!
-        done();
+        return done();
       });
     }));
   });
