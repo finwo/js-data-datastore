@@ -73,7 +73,6 @@ module.exports = function (store) {
           //   localField : 'logs',
           //   foreignKey : 'owner_id',
           //   load       : function (Chair, relationDef, chair, options) {
-          //     console.log('finding chair.log');
           //     return store.findAll('log', {
           //       where : {
           //         owner_id   : {'==' : chair.id},
@@ -82,7 +81,6 @@ module.exports = function (store) {
           //     });
           //   },
           //   get        : function (Chair, relationDef, chair, origGetter) {
-          //     console.log('finding chair.log');
           //     return store.findAll('log', {
           //       where : {
           //         owner_id   : {'==' : chair.id},
@@ -129,7 +127,6 @@ module.exports = function (store) {
           //   localField : 'logs',
           //   foreignKey : 'owner_id',
           //   load       : function (Guest, relationDef, guest, options) {
-          //     console.log('finding guest.log');
           //     return store.findAll('log', {
           //       where : {
           //         owner_id   : {'==' : guest.unique},
@@ -138,7 +135,6 @@ module.exports = function (store) {
           //     });
           //   },
           //   get        : function (Guest, relationDef, guest, origGetter) {
-          //     console.log('finding guest.log');
           //     return store.findAll('log', {
           //       where : {
           //         owner_id   : {'==' : guest.unique},
@@ -168,12 +164,10 @@ module.exports = function (store) {
           table : {
             localField : 'owner',
             foreignKey : 'owner_id',
-            load       : function (Log, relationDef, log, options) {
-              console.log('finding log('+log.id+').table('+log.owner_id+')');
+            load       : function (Log, relationDef, log/*, options*/) {
               return store.find(log.owner_type, log.owner_id);
             },
-            get        : function (Log, relationDef, log, origGetter) {
-              console.log('finding log('+log.id+').table('+log.owner_id+')');
+            get        : function (Log, relationDef, log/*, origGetter*/) {
               return store.find(log.owner_type, log.owner_id);
             }
           }

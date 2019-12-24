@@ -71,8 +71,8 @@ co(function* () {
           tables.forEach(function (table) {
             table.max_chairs = 1;
           });
-          var tables_updated = yield store.updateMany('table', tables, {});
-          var check          = yield store.findAll('table', {
+          yield store.updateMany('table', tables, {});
+          var check = yield store.findAll('table', {
             where : {
               'max_chairs' : {'==' : 1}
             }
