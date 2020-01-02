@@ -30,6 +30,6 @@
     "mocha": "^5.2.0",
     "nyc": "^11.6.0",
     "serial-mocha": "0.0.4",
-    "trackthis-helpers": "^0.4.2"
+    "trackthis-helpers": "^2.1.0"
   }
 }
