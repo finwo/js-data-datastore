@@ -28,7 +28,7 @@
     "fs-extra": "^8.1.0",
     "jshint": "^2.9.5",
     "mocha": "^5.2.0",
-    "nyc": "^11.6.0",
+    "nyc": "^15.0.0",
     "serial-mocha": "0.0.4",
     "trackthis-helpers": "^2.1.0"
   }
