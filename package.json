@@ -14,7 +14,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@google-cloud/datastore": "^5.0.2",
+    "@google-cloud/datastore": "^6.0.0",
     "co": "^4.6.0",
     "js-data": "^3.0.1",
     "js-data-adapter": "^1.0.1"
