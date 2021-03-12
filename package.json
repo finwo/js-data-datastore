@@ -27,7 +27,7 @@
     "co-mocha": "^1.2.2",
     "fs-extra": "^9.0.0",
     "jshint": "^2.9.5",
-    "mocha": "^5.2.0",
+    "mocha": "^8.3.2",
     "nyc": "^15.0.0",
     "serial-mocha": "0.0.4",
     "trackthis-helpers": "^2.1.0"
